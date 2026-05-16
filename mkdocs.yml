@@ -1,0 +1,99 @@
+site_name: Nexplane Documentation
+site_url: https://docs.nexplane.ai
+site_description: The security control plane for your infrastructure
+repo_url: https://github.com/youbetyourballs/nexplane
+repo_name: nexplane
+edit_uri: ""
+
+theme:
+  name: material
+  palette:
+    scheme: slate
+    primary: indigo
+    accent: cyan
+  features:
+    - navigation.tabs
+    - navigation.sections
+    - navigation.expand
+    - navigation.top
+    - search.highlight
+    - search.suggest
+    - content.code.copy
+  font:
+    text: Inter
+    code: JetBrains Mono
+
+nav:
+  - Home: index.md
+  - Getting Started:
+    - Installation: getting-started/installation.md
+    - Connect a Cloud Account: getting-started/connect-cloud.md
+    - Your First Change Request: getting-started/first-change-request.md
+    - Deploy the Agent: getting-started/deploy-agent.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Control Plane: architecture/control-plane.md
+    - Agent: architecture/agent.md
+    - Data Residency: architecture/data-residency.md
+  - Connectors:
+    - Overview: connectors/index.md
+    - AWS: connectors/aws.md
+    - GCP: connectors/gcp.md
+    - Azure: connectors/azure.md
+    - OCI: connectors/oci.md
+    - LDAP: connectors/ldap.md
+    - HashiCorp Vault: connectors/vault.md
+    - Keycloak: connectors/keycloak.md
+    - Kubernetes: connectors/kubernetes.md
+    - SSH: connectors/ssh.md
+    - WinRM: connectors/winrm.md
+    - PostgreSQL: connectors/postgres.md
+    - Redis: connectors/redis.md
+    - MongoDB: connectors/mongodb.md
+  - Change Types:
+    - Overview: change-types/index.md
+    - Compute: change-types/compute.md
+    - Identity: change-types/identity.md
+    - Credentials: change-types/credentials.md
+    - Hardening: change-types/hardening.md
+    - Vulnerability Remediation: change-types/vulnerability.md
+  - Agent:
+    - Installation: agent/installation.md
+    - Commands: agent/commands.md
+    - Windows: agent/windows.md
+    - macOS: agent/macos.md
+  - Runbooks:
+    - Overview: runbooks/index.md
+    - Agent Registration Failure: runbooks/agent-registration-failure.md
+    - Connector Credential Errors: runbooks/connector-credential-errors.md
+    - Rollback Failure: runbooks/rollback-failure.md
+    - Upgrading: runbooks/upgrade.md
+  - API Reference: api/index.md
+  - Security:
+    - Security Model: security/model.md
+    - Credential Storage: security/credentials.md
+
+markdown_extensions:
+  - admonition
+  - pymdownx.details
+  - pymdownx.superfences
+  - pymdownx.highlight:
+      anchor_linenums: true
+  - pymdownx.inlinehilite
+  - pymdownx.snippets
+  - pymdownx.tabbed:
+      alternate_style: true
+  - attr_list
+  - tables
+  - toc:
+      permalink: true
+
+plugins:
+  - search
+
+extra:
+  social:
+    - icon: fontawesome/brands/github
+      link: https://github.com/youbetyourballs/nexplane
+    - icon: fontawesome/solid/envelope
+      link: mailto:hello@nexplane.ai

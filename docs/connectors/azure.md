@@ -1,43 +1,110 @@
 # Azure Connector
 
-The Azure connector uses the Azure SDK for Python to interact with Azure Active Directory, virtual machines, and storage. It supports service principal credential rotation, VM management, and network security group operations.
+The Azure connector uses the Azure SDK for Python to interact with Azure Virtual Machines, networking, storage, identity, and monitoring.
 
 ## Credential Fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| Name | string | Yes | Display name for this connector (e.g., `prod-azure`) |
-| Tenant ID | string | Yes | Azure AD tenant ID (GUID) |
-| Client ID | string | Yes | Application (client) ID of the service principal |
-| Client Secret | string | Yes | Client secret for the service principal |
-| Subscription ID | string | Yes | Azure subscription ID (GUID) |
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name (e.g., `prod-azure`) |
+| Tenant ID | Yes | Azure AD tenant ID (GUID) |
+| Client ID | Yes | Service principal application ID |
+| Client Secret | Yes | Service principal secret |
+| Subscription ID | Yes | Azure subscription ID |
 
-## Supported Actions
+## Required Roles
+
+Assign these roles to the service principal at the **subscription scope**:
+
+- `Contributor` — required for all resource create/delete/modify operations
+- `User Access Administrator` — required for RBAC role assignment operations
+
+!!! warning
+    `Contributor` alone is **not sufficient**. Role assignment operations fail without `User Access Administrator`.
+
+## Capabilities
+
+### Virtual Machines
 
 | Action | Description | Rollback |
-|---|---|---|
-| Rotate Service Principal Secret | Creates a new client secret, records the old secret ID | Delete new secret, note old secret cannot be restored |
-| Disable Service Principal | Sets the service principal `accountEnabled` flag to false | Re-enable the service principal |
-| Enable Service Principal | Sets `accountEnabled` to true | Disable the service principal |
-| Modify NSG Rule | Adds, modifies, or removes a network security group rule | Restore the previous rule |
-| Stop VM | Deallocates a running virtual machine | Start the VM |
-| Start VM | Starts a deallocated virtual machine | Deallocate the VM |
+|--------|-------------|---------|
+| `azure_vm_create` | Create a VM | Delete the VM |
+| `azure_vm_stop` | Stop (deallocate) a VM | Start the VM |
+| `azure_vm_start` | Start a VM | Stop the VM |
+| `azure_vm_reboot` | Reboot a VM | N/A |
+| `azure_vm_snapshot` | Create a managed disk snapshot | Delete the snapshot |
+| `azure_vm_delete` | Delete a VM | Not available |
 
-## Minimum Permissions Required
+### Network Security Groups
 
-The service principal used by Nexplane needs:
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `azure_nsg_update` | Add or update an NSG rule | Restore previous rule |
+| `azure_nsg_restore` | Restore an NSG to a snapshot state | N/A |
 
-For discovery:
-- Azure AD: `Directory.Read.All` (Microsoft Graph)
-- Subscription: `Reader` role
+### Storage
 
-For full change execution:
-- Azure AD: `Application.ReadWrite.All` (Microsoft Graph)
-- Subscription: `Contributor` or scoped `Network Contributor` + `Virtual Machine Contributor` + `Storage Account Contributor`
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Create storage account | Create a blob storage account | Delete the account |
+| Delete storage account | Delete a storage account | Not available |
+| Create container | Create a blob container | Delete the container |
+| Delete container | Delete a blob container | Not available |
 
-## Known Limitations
+### Identity
 
-- Azure AD client secrets cannot be retrieved after creation. When rotating a secret, Nexplane stores the new secret value (encrypted) in the change record for handoff, but the old secret value is not stored -- rollback disables the new secret but cannot restore the old one.
-- NSG rule priority values must be unique within a rule set. If the restored rule priority conflicts with a rule added after the change, rollback will fail with a conflict error.
-- VM start/stop operations are asynchronous. Nexplane polls for up to 10 minutes.
-- The connector targets a single subscription. Multi-subscription setups require one connector per subscription.
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Create managed identity | Create a user-assigned managed identity | Delete the identity |
+| Delete managed identity | Delete a managed identity | Not available |
+| Create RBAC assignment | Assign a role to a principal | Delete the assignment |
+| Delete RBAC assignment | Remove a role assignment | Not available |
+
+### Network
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Create VNet | Create a virtual network and subnet | Delete the VNet |
+| Create subnet | Add a subnet to an existing VNet | Delete the subnet |
+
+### DNS
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Create DNS zone | Create an Azure DNS zone | Delete the zone |
+| Create A record | Create a DNS A record | Delete the record |
+
+### SQL
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Create SQL Server | Create an Azure SQL Server | Delete the server |
+| Create SQL Database | Create a database on a SQL Server | Delete the database |
+
+### Monitor
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Create metric alert | Create a Monitor metric alert rule | Delete the alert |
+| Delete metric alert | Delete a Monitor metric alert rule | Recreate the alert |
+
+### Entra ID Users
+
+| Action | Description |
+|--------|-------------|
+| Disable user | Disable an Entra ID user account |
+| Enable user | Enable an Entra ID user account |
+| Revoke sessions | Revoke all active sessions for a user |
+| Assign license | Assign a Microsoft 365 license |
+| Remove license | Remove a Microsoft 365 license |
+
+### IaC
+
+| Action | Description |
+|--------|-------------|
+| Terraform local | Run `terraform apply` in backend container |
+| Ansible local | Run Ansible playbook via SSM transport |
+
+### Resource Tagging
+
+Apply or update tags on any Azure resource.

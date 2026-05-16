@@ -1,70 +1,93 @@
-# Nexplane Documentation
+# Nexplane
 
-Nexplane is a security control plane that gives your security team a single, auditable interface for making changes across your entire infrastructure -- cloud accounts, identity systems, secrets managers, databases, and bare-metal hosts.
+**The control plane for security execution.**
 
-Every change in Nexplane is structured: it has a risk score, an approval gate, an execution step, a verification step, and a typed rollback. Nothing runs ad hoc. Nothing is irreversible by accident.
+Nexplane connects intent to action across your infrastructure — enabling security engineering and architecture teams to execute infrastructure changes safely, without routing work through sysadmin, network admin, or SRE queues.
 
----
-
-## What Nexplane Does
-
-| Capability | Description |
-|---|---|
-| Change Requests | Structured, approved, auditable changes across any connector |
-| Risk Scoring | Automatic risk assessment before any change executes |
-| Approval Gates | Single or multi-party approval with policy enforcement |
-| Typed Rollback | Every change type knows its own inverse operation |
-| Asset Discovery | Continuous inventory across all connected systems |
-| Connector Library | 14 connectors covering cloud, identity, secrets, databases, and hosts |
-| Agent Execution | Go-based agent runs hardening and local changes on-host |
+> *Execute with Confidence*
 
 ---
 
-## Quick Start
+## What It Does
 
-If you want to be up and running in 15 minutes, start here:
+Security teams identify issues and need to act on them: rotate compromised keys, isolate a compromised endpoint, tighten firewall rules after a scan, deploy an EDR sensor to unprotected hosts, enforce MFA, offboard a departing employee. Today, all of that flows through tickets.
 
-1. [Install Nexplane with Docker Compose](getting-started/installation.md)
-2. [Connect your first cloud account](getting-started/connect-cloud.md)
-3. [Create your first change request](getting-started/first-change-request.md)
-4. [Deploy the agent to a host](getting-started/deploy-agent.md)
+Nexplane gives security teams a governed execution layer:
 
----
-
-## Architecture at a Glance
-
-Nexplane has three layers:
-
-- **Control Plane** -- FastAPI backend and React frontend, hosted by Nexplane or self-hosted in your VPC
-- **Connectors** -- credential-backed integrations that talk to cloud APIs, identity systems, and databases
-- **Agent** -- a Go binary that runs on Linux, Windows, and macOS hosts and executes local changes
-
-All connector credentials are encrypted at rest. The agent communicates with the control plane over mutual TLS. No credentials ever leave the control plane unencrypted.
-
-See [Architecture Overview](architecture/overview.md) for the full picture.
+- **Change Requests** — safety-reviewed, approval-gated, audited, with automatic rollback
+- **Projects** — group related change requests into a sequenced plan with dependency tracking
+- **AI Planning Assistant** — describe your goal, get a structured change plan referencing your actual asset inventory
+- **Composable Runbooks** — chain change types into reusable multi-step workflows with conditional branching and human checkpoints
+- **Asset Inventory** — servers, cloud accounts, firewalls, identities, applications — discoverable via connectors
+- **Connectors** — 38+ integrations spanning cloud, identity, EDR, IaC, ticketing, and observability
+- **Nexplane Agent** — a cross-platform Go binary that runs on managed machines, reaches out to the control plane, and executes signed commands — no inbound SSH required
+- **Incident Response Playbooks** — pre-defined fast-path workflows for host isolation, account lockdown, evidence preservation, and phishing response
+- **Vulnerability Remediation Pipeline** — close the loop between scanner findings and automated remediation
+- **Compliance & Governance** — CIS benchmark enforcement, drift detection, change freeze windows, audit evidence collection
 
 ---
 
-## Connectors
+## Architecture
 
-Nexplane ships connectors for:
+```
+┌─────────────────────────────────────────────────────────────────────────┐
+│  React Frontend  (Vite + TypeScript + Tailwind CSS)                      │
+│                                                                          │
+│  Dashboard · Projects · Change Requests · Approvals · Asset Inventory   │
+│  Connectors · Settings · Runbooks · Compliance · Incident Response       │
+│  Vulnerability Remediation · Access Reviews · Maintenance Windows        │
+└───────────────────────────┬─────────────────────────────────────────────┘
+                            │ HTTP/REST (localhost only)
+┌───────────────────────────▼─────────────────────────────────────────────┐
+│  FastAPI Backend  (Python 3.12)                                           │
+│                                                                          │
+│  Safety Engine · Planning Engine · AI Service · Audit Service            │
+│  Secrets Service (Fernet AES-256, HSM/Vault-swappable)                   │
+│  RunbookExecutor · IRExecutor · FleetExecutor · IaCExecutor              │
+│  VulnRemediationEngine · IdentityResolver · DriftDetection               │
+│                                                                          │
+│  Connectors — change actions + ingest (38+ connectors)                   │
+│  aws · azure · gcp · cloudflare · okta · paloalto · ssh                 │
+│  active_directory · entra_id · crowdstrike · tenable · kubernetes        │
+│  tailscale · terraform_local · ansible_local · ...                      │
+└───────────────────────────┬─────────────────────────────────────────────┘
+                            │ SQLAlchemy async
+┌───────────────────────────▼─────────────────────────────────────────────┐
+│  PostgreSQL 16                                                            │
+└──────────────────────────────────────────────────────────────────────────┘
 
-**Cloud:** [AWS](connectors/aws.md) -- [GCP](connectors/gcp.md) -- [Azure](connectors/azure.md) -- [OCI](connectors/oci.md)
-
-**Identity:** [LDAP](connectors/ldap.md) -- [Keycloak](connectors/keycloak.md)
-
-**Secrets:** [HashiCorp Vault](connectors/vault.md)
-
-**Orchestration:** [Kubernetes](connectors/kubernetes.md)
-
-**Hosts:** [SSH](connectors/ssh.md) -- [WinRM](connectors/winrm.md)
-
-**Databases:** [PostgreSQL](connectors/postgres.md) -- [Redis](connectors/redis.md) -- [MongoDB](connectors/mongodb.md)
+                    ┌──────────────────────────────────────┐
+                    │  Nexplane Agent (Go)                  │
+                    │  linux/amd64 · arm64 · windows/amd64 │
+                    │                                       │
+                    │  Outbound poll only —                 │
+                    │  no inbound SSH needed                │
+                    └────────────┬──────────────────────────┘
+                                 │ long-poll HTTP (outbound)
+                                 └──► /agent/jobs/next
+```
 
 ---
 
-## Need Help?
+## Stack
 
-- Browse the [Runbooks](runbooks/index.md) for common operational issues
-- Check the [API Reference](api/index.md) for integration docs
-- Email [hello@nexplane.ai](mailto:hello@nexplane.ai)
+| Layer | Technology |
+|-------|-----------|
+| Frontend | React 18, TypeScript, Vite, Tailwind CSS, TanStack Query v5, React Router v6 |
+| Backend | Python 3.12, FastAPI, SQLAlchemy 2.0 async, Pydantic v2 |
+| Database | PostgreSQL 16 |
+| Auth | JWT + bcrypt |
+| AI | Anthropic Claude + OpenAI (multi-provider, default configurable) |
+| Secrets | Fernet AES-256 with versioning; abstracted for HSM/Vault swap-out |
+| Agent | Go, cross-platform (linux/amd64, linux/arm64, windows/amd64) |
+| IaC Runtime | Terraform CLI, Ansible + community.aws, AWS session-manager-plugin |
+| Deployment | Docker Compose |
+
+---
+
+## Get Started
+
+- [Install Nexplane](getting-started/installation.md)
+- [Connect a cloud account](getting-started/connect-cloud.md)
+- [Create your first change request](getting-started/first-change-request.md)
+- [Deploy the agent](getting-started/deploy-agent.md)

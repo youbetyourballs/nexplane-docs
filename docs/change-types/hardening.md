@@ -1,102 +1,71 @@
 # Hardening Change Types
 
-Hardening changes apply security configuration baselines to hosts and systems. They are typically used to bring systems into compliance with a security standard such as the CIS Benchmarks.
+Hardening changes improve security posture by applying configuration changes to hosts and network infrastructure.
 
-## Apply CIS Hardening Profile
+## Network Hardening
 
-Applies a named CIS Benchmark profile to a Linux or Windows host. The profile is a curated set of hardening operations (service disabling, sysctl settings, file permissions, registry changes) that have been validated by the Nexplane team against the official CIS benchmark documents.
+| Change Type | Description | Rollback |
+|-------------|-------------|---------|
+| `security_group_update` | Add or remove rules from an AWS security group | Restore original ruleset |
+| `microsegmentation_policy` | Apply a microsegmentation network policy | Staged simulation mode only — policy is simulated before applying |
+| `dns_update` | Update DNS records | Restore previous DNS state |
 
-**Connectors:** SSH, WinRM, Agent
+**Note:** `microsegmentation_policy` runs in staged simulation mode by default. The safety engine blocks execution on production assets unless explicit simulation confirmation is provided.
 
-**Parameters:**
+## Host Isolation
 
-| Parameter | Type | Description |
-|---|---|---|
-| Profile | string | CIS profile name (e.g., `cis-rhel9-level1`, `cis-windows-server-2022-level1`) |
+| Change Type | Description | Rollback |
+|-------------|-------------|---------|
+| `isolate_host` | Flush iptables/nftables (Linux) or Windows Firewall rules; allow only management CIDR and Nexplane control plane | `restore_network_access` — applies pre-isolation state from snapshot |
+| `restore_network_access` | Restore network access to an isolated host | N/A |
 
-**Available profiles:**
+**Connector:** Nexplane Agent
 
-| Profile ID | Benchmark | Level |
-|---|---|---|
-| `cis-rhel9-level1` | CIS Red Hat Enterprise Linux 9 | Level 1 |
-| `cis-rhel9-level2` | CIS Red Hat Enterprise Linux 9 | Level 2 |
-| `cis-ubuntu2204-level1` | CIS Ubuntu Linux 22.04 LTS | Level 1 |
-| `cis-ubuntu2204-level2` | CIS Ubuntu Linux 22.04 LTS | Level 2 |
-| `cis-debian12-level1` | CIS Debian Linux 12 | Level 1 |
-| `cis-windows-server-2022-level1` | CIS Microsoft Windows Server 2022 | Level 1 |
-| `cis-windows-server-2022-level2` | CIS Microsoft Windows Server 2022 | Level 2 |
+The pre-isolation network state (all active rules) is captured before any flush. `restore_network_access` reapplies that snapshot exactly.
 
-**Execution:**
-Each profile runs a sequence of typed operations. Before each operation, the current state is captured and stored in the change record. If an individual step fails, execution continues with the remaining steps (failures are logged per-step). A partial success is reported if some steps succeed and some fail.
+## OS Security Hardening (Agent)
 
-**Rollback:** Restores the pre-change state for each step that was successfully executed. Steps that failed during execution are skipped during rollback.
+Dispatched via the `ossecurity` agent command package:
 
-**Risk base score:** 6 (medium -- some hardening changes can break applications with non-standard configurations)
+| Command | Description |
+|---------|-------------|
+| `configure_selinux` | Set SELinux mode (enforcing/permissive/disabled) |
+| `configure_seccomp` | Apply a seccomp filter profile |
+| `apply_sysctl_hardening` | Apply kernel hardening parameters from a profile |
+| `configure_host_firewall` | Configure iptables/nftables rules |
+| `blacklist_kernel_modules` | Blacklist insecure kernel modules |
+| `harden_mount_options` | Apply security mount options (noexec, nosuid, nodev) |
+| `deploy_auditd_rules` | Deploy auditd rule set |
+| `setup_file_integrity_monitoring` | Configure file integrity monitoring |
+| `audit_os_security_posture` | Audit current OS security configuration |
+| `configure_ebpf_security_policy` | Deploy an eBPF security policy |
 
----
+**Connector:** Nexplane Agent (Linux only)
 
-## Disable Unused Service
+## Azure NSG
 
-Stops and disables a named system service.
+| Change Type | Description | Rollback |
+|-------------|-------------|---------|
+| `azure_nsg_update` | Add or update an NSG rule | Restore original rule |
+| `azure_nsg_restore` | Restore an NSG to a previous state | N/A |
 
-**Connectors:** SSH, WinRM, Agent
+**Connector:** Azure
 
-**Parameters:**
+## GCP Firewall
 
-| Parameter | Type | Description |
-|---|---|---|
-| Service Name | string | Service name (e.g., `telnet`, `rsh`, `rlogin`, `tftp`) |
+| Change Type | Description | Rollback |
+|-------------|-------------|---------|
+| `gcp_firewall_create` | Create a GCP firewall rule | Delete the rule |
+| `gcp_firewall_delete` | Delete a GCP firewall rule | Recreate the rule |
 
-**Execution (Linux):**
-```
-systemctl disable --now <service>
-```
+**Connector:** GCP
 
-**Execution (Windows):**
-```
-Stop-Service -Name "<service>"; Set-Service -Name "<service>" -StartupType Disabled
-```
+## Patch Packages
 
-**Rollback:** Re-enables and starts the service.
+**Change type:** `patch_packages`
 
-**Risk base score:** 4 (medium -- disabling the wrong service can break functionality)
+Apply OS package updates via the Nexplane Agent. Supports `apt`, `yum`, and `dnf`. Can target security-only updates or specific CVEs.
 
----
+**Change type:** `patch_campaign`
 
-## Set File Permission
-
-Sets the mode and ownership on a specific file or directory path.
-
-**Connectors:** SSH, Agent
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| Path | string | Absolute file path (e.g., `/etc/ssh/sshd_config`) |
-| Mode | string | Octal permission mode (e.g., `0600`) |
-| Owner | string | Owning user (e.g., `root`) |
-| Group | string | Owning group (e.g., `root`) |
-
-**Rollback:** Restores the previous mode, owner, and group recorded before the change.
-
-**Risk base score:** 3 (low -- targeted change to a specific file)
-
----
-
-## Set Sysctl Parameter
-
-Writes a kernel parameter value using `sysctl -w` and persists it to `/etc/sysctl.d/99-nexplane.conf`.
-
-**Connectors:** SSH, Agent
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| Key | string | Sysctl key (e.g., `net.ipv4.conf.all.send_redirects`) |
-| Value | string | Value to set (e.g., `0`) |
-
-**Rollback:** Restores the previous value and removes the persistence file entry.
-
-**Risk base score:** 4 (medium -- kernel parameter changes take effect immediately)
+Orchestrate a patch campaign across a fleet with batch size control and abort threshold.

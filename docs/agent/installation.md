@@ -1,124 +1,92 @@
-# Agent Installation
-
-The Nexplane agent is a statically compiled Go binary with no runtime dependencies. It installs as a system service and runs in the background, polling for assigned change requests.
-
-## Supported Platforms
-
-| Platform | Architecture | Minimum OS Version |
-|---|---|---|
-| Linux | amd64, arm64 | Any systemd-based distro (RHEL 7+, Ubuntu 18.04+, Debian 10+) |
-| Windows | amd64 | Windows Server 2016, Windows 10 |
-| macOS | arm64 (Apple Silicon) | macOS 12 (Monterey) |
-| macOS | amd64 (Intel) | macOS 12 (Monterey) |
+# Agent Installation & Configuration
 
 ## Prerequisites
 
-- Network access from the agent host to the Nexplane control plane (port 8000 by default)
-- Root or Administrator privileges for installation
-- An enrollment token generated in the Nexplane UI (Settings > Agents > New Enrollment Token)
+- Network access to the Nexplane control plane URL (outbound HTTP/HTTPS)
+- An agent secret generated in **Settings → Agent Configuration**
 
-## Linux Installation
+## Download
 
-### Download
+The **Deploy Agent** panel in Nexplane Settings pre-fills all install commands with your control plane URL, secret, and current version.
 
-```bash
-# Detect architecture
-ARCH=$(uname -m)
-if [ "$ARCH" = "aarch64" ]; then ARCH="arm64"; else ARCH="amd64"; fi
+=== "Linux (one-liner, x86_64)"
 
-# Download
-curl -fsSL "https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-linux-${ARCH}" \
-  -o /usr/local/bin/nexplane-agent
-chmod +x /usr/local/bin/nexplane-agent
-```
+    ```bash
+    VERSION=$(curl -fsSL https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/version)
+    curl -fsSL "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/nexplane-agent-linux-amd64-${VERSION}" \
+      -o /usr/local/bin/nexplane-agent
+    chmod +x /usr/local/bin/nexplane-agent
+    ```
 
-### Install as Systemd Service
+=== "Linux (ARM64)"
 
-```bash
-nexplane-agent install \
-  --control-plane https://nexplane.example.com:8000 \
-  --token YOUR_ENROLLMENT_TOKEN \
-  --poll-interval 5s
-```
+    ```bash
+    VERSION=$(curl -fsSL https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/version)
+    curl -fsSL "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/nexplane-agent-linux-arm64-${VERSION}" \
+      -o /usr/local/bin/nexplane-agent
+    chmod +x /usr/local/bin/nexplane-agent
+    ```
 
-This command:
-1. Generates a key pair for mTLS authentication
-2. Sends a CSR to the control plane with the enrollment token
-3. Receives and stores a signed client certificate
-4. Writes `/etc/nexplane-agent/config.yaml`
-5. Creates and enables `/etc/systemd/system/nexplane-agent.service`
-6. Starts the service
+=== "Windows (PowerShell)"
 
-### Verify Installation
+    ```powershell
+    $version = (Invoke-WebRequest -Uri "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/version").Content.Trim()
+    Invoke-WebRequest -Uri "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/nexplane-agent-windows-amd64-${version}.exe" `
+      -OutFile "C:\nexplane\nexplane-agent.exe"
+    ```
 
-```bash
-systemctl status nexplane-agent
-journalctl -u nexplane-agent -n 50
-```
+## Run as Persistent Service
 
-## Windows Installation
+=== "Linux (systemd)"
 
-Download from the releases page and run as Administrator:
+    Create `/etc/systemd/system/nexplane-agent.service`:
 
-```powershell
-.\nexplane-agent-windows-amd64.exe install `
-  --control-plane https://nexplane.example.com:8000 `
-  --token YOUR_ENROLLMENT_TOKEN
-```
+    ```ini
+    [Unit]
+    Description=Nexplane Agent
+    After=network.target
 
-The installer creates a Windows Service named `NexplaneAgent` and starts it automatically.
+    [Service]
+    ExecStart=/usr/local/bin/nexplane-agent \
+      --control-plane https://nexplane.acme.example:8000 \
+      --secret sk-agent-<your-secret> \
+      --mode service \
+      --poll-interval 30s
+    Restart=on-failure
+    RestartSec=5s
 
-See [Windows-specific notes](windows.md) for firewall and WMI configuration.
+    [Install]
+    WantedBy=multi-user.target
+    ```
 
-## macOS Installation
+    ```bash
+    systemctl daemon-reload
+    systemctl enable --now nexplane-agent
+    ```
 
-```bash
-# Apple Silicon
-curl -fsSL https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-darwin-arm64 \
-  -o /usr/local/bin/nexplane-agent
+=== "Windows (PowerShell)"
 
-# Intel Mac
-curl -fsSL https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-darwin-amd64 \
-  -o /usr/local/bin/nexplane-agent
+    ```powershell
+    New-Service -Name "NexplaneAgent" `
+      -BinaryPathName "C:\nexplane\nexplane-agent.exe --mode service --poll-interval 30s --control-plane https://nexplane.acme.example:8000 --secret <your-secret>" `
+      -StartupType Automatic
+    Start-Service NexplaneAgent
+    ```
 
-chmod +x /usr/local/bin/nexplane-agent
+## Flag / Environment Variable Reference
 
-nexplane-agent install \
-  --control-plane https://nexplane.example.com:8000 \
-  --token YOUR_ENROLLMENT_TOKEN
-```
+| Flag | Env Var | Default | Description |
+|------|---------|---------|-------------|
+| `--control-plane` | `NP_CONTROL_PLANE` | (required) | Control plane URL |
+| `--secret` | `NP_SECRET` | (required) | HMAC secret from Settings |
+| `--mode` | `NP_MODE` | `service` | `service` (persistent poll) or `ephemeral` (run once and exit) |
+| `--hostname` | `NP_HOSTNAME` | OS hostname | Override the registered hostname |
+| `--poll-interval` | `NP_POLL_INTERVAL` | `30s` | Long-poll interval |
 
-See [macOS-specific notes](macos.md) for Gatekeeper and Full Disk Access setup.
+## Verify Registration
 
-## Uninstalling
+After the agent starts, it appears as an Asset in **Asset Inventory** within seconds. The asset shows hostname, OS, agent version, and last-seen timestamp.
 
-```bash
-# Linux
-nexplane-agent uninstall
+## Self-Hosted Binary Distribution
 
-# Windows (run as Administrator)
-nexplane-agent-windows-amd64.exe uninstall
-
-# macOS
-nexplane-agent uninstall
-```
-
-The uninstall command stops the service, removes the service definition, and deletes the agent configuration and certificates. It does not affect any changes that were previously executed by the agent.
-
-## Configuration File
-
-The agent configuration is stored at:
-
-- Linux: `/etc/nexplane-agent/config.yaml`
-- Windows: `C:\ProgramData\NexplaneAgent\config.yaml`
-- macOS: `/etc/nexplane-agent/config.yaml`
-
-```yaml
-control_plane: https://nexplane.example.com:8000
-poll_interval: 5s
-log_level: info
-cert_path: /etc/nexplane-agent/client.crt
-key_path: /etc/nexplane-agent/client.key
-```
-
-Edit this file and restart the service to change configuration after installation.
+If you host agent binaries internally, set `NEXPLANE_AGENT_DOWNLOAD_URL` in the backend environment to point to your distribution server. The Settings deploy panel will generate install commands using your URL.

@@ -1,95 +1,61 @@
 # Change Types
 
-A change type is a structured, typed operation that Nexplane knows how to execute and roll back. Every change request is associated with exactly one change type. Change types define:
+A change type is a structured, typed operation that Nexplane knows how to execute and roll back. Every change request is associated with exactly one change type. Change types define what connector they require, what parameters they accept, what the execution steps are, and what the rollback operation is.
 
-- What connector they require
-- What parameters they accept
-- What the execution steps are
-- What the rollback operation is
+## Full Change Type Catalog
 
-## Categories
-
-### Compute
-
-Compute changes affect running infrastructure -- virtual machines, containers, and cloud instances.
-
-| Change Type | Connectors | Description |
-|---|---|---|
-| Snapshot EC2 Instance | AWS | Create an EBS snapshot before a risky change |
-| Stop/Start Instance | AWS, GCP, Azure, OCI | Power operations with rollback |
-| Cordon/Uncordon Node | Kubernetes | Control workload scheduling |
-| Patch Deployment | Kubernetes | Update image or configuration |
-
-See [Compute](compute.md).
-
-### Identity
-
-Identity changes affect user accounts, service accounts, and authentication configurations.
-
-| Change Type | Connectors | Description |
-|---|---|---|
-| Lock User Account | LDAP, Keycloak, AWS, GCP, PostgreSQL, MongoDB | Disable a user account |
-| Unlock User Account | LDAP, Keycloak, AWS, GCP, PostgreSQL, MongoDB | Re-enable a user account |
-| Add to Group | LDAP, Keycloak | Modify group membership |
-| Remove from Group | LDAP, Keycloak | Modify group membership |
-
-See [Identity](identity.md).
-
-### Credentials
-
-Credential changes rotate or revoke secrets, API keys, and passwords.
-
-| Change Type | Connectors | Description |
-|---|---|---|
-| Rotate IAM Access Key | AWS | Create new key, deactivate old key |
-| Rotate Service Account Key | GCP | Create new key, delete old key |
-| Rotate Client Secret | Azure, Keycloak | Generate new secret |
-| Rotate OCI API Key | OCI | Upload new key, delete old key |
-| Rotate KV Secret | Vault | Write new secret version |
-| Rotate Database Password | PostgreSQL, MongoDB, Redis | Update password |
-| Rotate Local Password | SSH, WinRM | Set new OS account password |
-
-See [Credentials](credentials.md).
-
-### Hardening
-
-Hardening changes improve the security posture of a host or system by applying configuration baselines.
-
-| Change Type | Connectors | Description |
-|---|---|---|
-| Apply CIS Profile | SSH, WinRM, Agent | Apply a CIS benchmark profile |
-| Disable Unused Service | SSH, WinRM, Agent | Disable a named system service |
-| Set File Permission | SSH, Agent | Fix insecure file permissions |
-| Set Sysctl Parameter | SSH, Agent | Apply kernel hardening settings |
-
-See [Hardening](hardening.md).
-
-### Vulnerability Remediation
-
-Vulnerability changes address specific CVEs or misconfigurations identified by a scanner.
-
-| Change Type | Connectors | Description |
-|---|---|---|
-| Install Package Update | SSH, Agent | Update a package to a specific version |
-| Remove Vulnerable Package | SSH, Agent | Remove a package with no available fix |
-| Revoke Exposed Credential | AWS, GCP, Azure, LDAP, Vault | Immediately revoke a known-compromised credential |
-
-See [Vulnerability Remediation](vulnerability.md).
+| Category | Change Types |
+|----------|-------------|
+| Infrastructure | `dns_update`, `security_group_update`, `microsegmentation_policy`, `snapshot_asset` |
+| EC2 | `ec2_launch`, `ec2_start`, `ec2_stop`, `ec2_reboot`, `ec2_terminate`, `key_pair_create`, `key_pair_delete` |
+| SSM | `ssm_command` |
+| Network | `tailscale_join`, `tailscale_remove` |
+| IP Migration | `change_ip`, `migrate_ip`, `ip_campaign` |
+| Agent | `deploy_nexplane_agent`, `patch_packages`, `patch_campaign`, `isolate_host`, `rolling_restart`, `canary_config_push`, `distribute_file`, `fleet_health_check` |
+| Identity | `offboard_user`, `onboard_user`, `key_rotation`, `rotate_db_credentials`, `rotate_ssh_keys`, `rotate_api_key`, `rotate_service_account` |
+| IAM | `iam_user_create`, `iam_user_delete` |
+| S3 Storage | `s3_bucket_create`, `s3_bucket_delete`, `s3_lifecycle_configure` |
+| DNS (Route53) | `route53_zone_create`, `route53_record_upsert`, `route53_record_delete` |
+| RDS | `rds_instance_create`, `rds_instance_delete`, `rds_snapshot_create` |
+| Observability | `cloudwatch_alarm_create`, `cloudwatch_alarm_delete` |
+| Incident Response | `lockdown_account`, `phishing_response`, `preserve_evidence` |
+| IaC (local) | `terraform_local_apply`, `ansible_local_playbook` |
+| IaC (remote) | `terraform_apply`, `ansible_playbook`, `helm_upgrade` |
+| Database | `provision_db_user`, `deprovision_db_user`, `db_permission_change`, `configure_db_audit`, `promote_db_replica`, `db_connection_config` |
+| Backup / Recovery | `create_backup`, `verify_backup`, `restore_files`, `dr_failover`, `scheduled_reboot` |
+| Compliance | `enforce_cis_benchmark`, `collect_evidence` |
+| SaaS (Google Workspace) | `remove_from_groups`, `reset_2fa`, `revoke_oauth_tokens`, `wipe_mobile_device`, `suspend_user`, `unsuspend_user` |
+| SaaS (GitHub) | `remove_org_member`, `revoke_user_pats`, `enforce_branch_protection`, `archive_repo`, `disable_actions`, `enable_actions` |
+| SaaS (Slack) | `deactivate_user`, `reactivate_user` |
+| SaaS (Entra ID) | `remove_from_teams`, `assign_license`, `remove_license`, `revoke_sessions`, `disable_user` |
+| SaaS (Kubernetes) | `restart_deployment`, `scale_deployment`, `apply_network_policy`, `update_rbac`, `rotate_secret`, `helm_upgrade`, `helm_rollback` |
+| Telemetry | `telemetry_agent_deploy`, `remote_command` |
 
 ## Risk Scoring
 
-Each change type has a base risk score. The final risk score for a change request is calculated from:
+Each change type has a base risk score. The final score for a change request is calculated from:
 
 - Base risk score of the change type
 - Environment label of the connector (prod scores higher than staging)
 - Blast radius of the target (how many systems depend on it)
-- Whether rollback is available for this change type
+- Whether rollback is available
 
-Risk levels:
+| Score | Level | Approval Required |
+|-------|-------|------------------|
+| 1–3 | Low | None (auto-approved in non-prod) |
+| 4–6 | Medium | 1 approver |
+| 7–8 | High | 1 approver (approver or admin role) |
+| 9–10 | Critical | 2 approvers (approver + admin) |
 
-| Score | Level | Default Approval Required |
-|---|---|---|
-| 1-3 | Low | None (auto-approved in non-prod) |
-| 4-6 | Medium | Single approver |
-| 7-9 | High | Two approvers |
-| 10 | Critical | Two approvers + time delay |
+## Pages by Category
+
+- [Compute](compute.md) — EC2, SSM, agent deploy, IP migration
+- [Identity & IAM](identity.md) — offboarding, onboarding, IAM users, SaaS identity actions
+- [Credentials](credentials.md) — key rotation, DB credentials, SSH keys, API keys
+- [Hardening](hardening.md) — security groups, microsegmentation, host isolation
+- [IaC](iac.md) — Terraform, Ansible, Helm
+- [Database](database.md) — user provisioning, permissions, audit, RDS
+- [Backup & Recovery](backup.md) — backups, restore, DR failover, scheduled reboot
+- [Compliance](compliance.md) — CIS benchmark, evidence collection
+- [Incident Response](incident-response.md) — account lockdown, phishing response, evidence preservation
+- [Telemetry](telemetry.md) — agent deploy, remote command, CloudWatch, fleet ops

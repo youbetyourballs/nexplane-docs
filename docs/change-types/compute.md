@@ -1,117 +1,84 @@
 # Compute Change Types
 
-Compute changes affect the operational state of virtual machines, containers, and cloud compute resources.
+Compute changes affect the operational state of virtual machines, cloud instances, and related infrastructure.
 
-## Snapshot EC2 Instance
+## EC2
 
-Creates an EBS snapshot of all volumes attached to an EC2 instance before a risky change. The snapshot is stored in AWS and can be used to restore the instance state if subsequent changes cause problems.
-
-**Connector:** AWS
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| Instance ID | string | EC2 instance ID (e.g., `i-0abcd1234efgh5678`) |
-| Description | string | Snapshot description |
-
-**Execution:**
-1. Calls `ec2:CreateSnapshot` for each attached volume
-2. Waits for all snapshots to reach `completed` state (up to 10 minutes)
-3. Records snapshot IDs in the change record
-
-**Rollback:** Deletes the created snapshots.
-
-**Risk base score:** 2 (low -- snapshot creation does not affect instance operation)
-
----
-
-## Stop EC2 Instance
-
-Stops a running EC2 instance. The instance is stopped (not terminated) -- data on EBS volumes is preserved.
+| Change Type | Description | Rollback |
+|-------------|-------------|---------|
+| `ec2_launch` | Launch a new EC2 instance from an AMI | Terminate the launched instance |
+| `ec2_start` | Start a stopped EC2 instance | Stop the instance |
+| `ec2_stop` | Stop a running EC2 instance | Start the instance |
+| `ec2_reboot` | Reboot an EC2 instance | N/A |
+| `ec2_terminate` | Terminate an EC2 instance | Not available — termination is irreversible |
+| `key_pair_create` | Create an EC2 key pair | Delete the key pair |
+| `key_pair_delete` | Delete an EC2 key pair | Not available |
+| `snapshot_asset` | Create an EBS snapshot of all attached volumes | Delete the created snapshots |
 
 **Connector:** AWS
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| Instance ID | string | EC2 instance ID |
-| Force | boolean | Force stop (equivalent to pulling the power, may cause data loss) |
-
-**Rollback:** Starts the stopped instance.
-
-**Risk base score:** 7 (high -- stops production workloads)
+**Risk base scores:** Launch/Start = 3, Stop = 7, Reboot = 6, Terminate = 9, Snapshot = 2
 
 ---
 
-## Start EC2 Instance
+## SSM Command
 
-Starts a stopped EC2 instance.
+**Change type:** `ssm_command`
+
+Runs an approved SSM document against an EC2 instance. Only SSM documents explicitly allow-listed in the connector configuration can be executed — freeform shell commands are blocked unconditionally by the safety engine.
 
 **Connector:** AWS
 
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| Instance ID | string | EC2 instance ID |
-
-**Rollback:** Stops the started instance.
-
-**Risk base score:** 2 (low)
+**Parameters:** document name, target instance ID, document parameters
 
 ---
 
-## Stop / Start GCE Instance
+## Azure VM
 
-Equivalent operations for Google Compute Engine instances via the GCP connector.
+| Change Type | Description |
+|-------------|-------------|
+| `azure_vm_create` | Create a new Azure VM |
+| `azure_vm_stop` | Stop (deallocate) an Azure VM |
+| `azure_vm_start` | Start a deallocated Azure VM |
+| `azure_vm_reboot` | Reboot an Azure VM |
+| `azure_vm_snapshot` | Create a managed disk snapshot |
+| `azure_vm_delete` | Delete an Azure VM |
 
-**Risk base score:** Stop: 7, Start: 2
-
----
-
-## Stop / Deallocate Azure VM
-
-Stop and start operations for Azure Virtual Machines. Azure VMs can be stopped (OS shutdown, still billed) or deallocated (OS shutdown, billing stops, public IP released).
-
-**Risk base score:** Stop: 7, Start: 2
-
----
-
-## Cordon Kubernetes Node
-
-Marks a Kubernetes node as unschedulable, preventing new pods from being placed on it. Existing pods are not evicted.
-
-**Connector:** Kubernetes
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| Node Name | string | Kubernetes node name |
-
-**Rollback:** Uncordons the node.
-
-**Risk base score:** 4 (medium -- degrades cluster capacity)
+**Connector:** Azure
 
 ---
 
-## Patch Kubernetes Deployment
+## GCP Compute
 
-Updates a deployment's container image or replica count.
+| Change Type | Description |
+|-------------|-------------|
+| `gcp_instance_create` | Create a new GCP Compute instance |
+| `gcp_instance_stop` | Stop a running GCP instance |
+| `gcp_instance_start` | Start a stopped GCP instance |
+| `gcp_instance_reboot` | Reboot a GCP instance |
+| `gcp_instance_snapshot` | Create a persistent disk snapshot |
+| `gcp_instance_delete` | Delete a GCP instance |
 
-**Connector:** Kubernetes
+**Connector:** GCP
 
-**Parameters:**
+---
 
-| Parameter | Type | Description |
-|---|---|---|
-| Namespace | string | Kubernetes namespace |
-| Deployment Name | string | Deployment name |
-| Container Name | string | Container to update |
-| Image | string | New container image and tag |
+## IP Migration
 
-**Rollback:** Restores the previous image tag from the deployment spec snapshot taken before the change.
+| Change Type | Description |
+|-------------|-------------|
+| `change_ip` | Change the IP address of a managed host via the Nexplane Agent |
+| `migrate_ip` | DNS-coordinated IP migration (lowers TTL first for long-TTL records) |
+| `ip_campaign` | Orchestrated IP changes across a fleet with batch control and abort threshold |
 
-**Risk base score:** 6 (medium -- rolling update, but incorrect image can break the workload)
+See [IP Migration](../features/ip-migration.md) for full details on methods, the dead man's switch, and the IP Migration Wizard.
+
+---
+
+## Agent Deploy
+
+**Change type:** `deploy_nexplane_agent`
+
+Installs the Nexplane Agent on a target EC2 instance via SSM. Downloads the binary from S3, sets up the systemd service, and registers the host with the control plane.
+
+**Connector:** AWS (via SSM)

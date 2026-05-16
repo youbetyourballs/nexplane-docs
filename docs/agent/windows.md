@@ -1,103 +1,92 @@
 # Agent on Windows
 
-This page covers Windows-specific installation details, service management, and troubleshooting for the Nexplane agent.
+This page covers Windows-specific details for the Nexplane Agent.
 
-## Service Installation
+## Supported Platform
 
-Run the installer from an elevated PowerShell prompt:
+Windows amd64 only. The agent binary is `nexplane-agent-windows-amd64-{VERSION}.exe`.
+
+!!! note "AWS Free Tier"
+    AWS Free Tier accounts cannot launch Windows EC2 instances. Windows Server AMIs require a paid AWS account.
+
+## Installation
 
 ```powershell
-.\nexplane-agent-windows-amd64.exe install `
-  --control-plane https://nexplane.example.com:8000 `
-  --token YOUR_ENROLLMENT_TOKEN
+# Download current version
+$version = (Invoke-WebRequest -Uri "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/version").Content.Trim()
+New-Item -ItemType Directory -Force "C:\nexplane"
+Invoke-WebRequest -Uri "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/nexplane-agent-windows-amd64-${version}.exe" `
+  -OutFile "C:\nexplane\nexplane-agent.exe"
+
+# Install as Windows Service
+New-Service -Name "NexplaneAgent" `
+  -BinaryPathName "C:\nexplane\nexplane-agent.exe --mode service --poll-interval 30s --control-plane https://nexplane.acme.example:8000 --secret <your-secret>" `
+  -DisplayName "Nexplane Agent" `
+  -StartupType Automatic
+Start-Service NexplaneAgent
 ```
 
-The installer:
-1. Copies the binary to `C:\Program Files\NexplaneAgent\nexplane-agent.exe`
-2. Writes config to `C:\ProgramData\NexplaneAgent\config.yaml`
-3. Stores the client certificate at `C:\ProgramData\NexplaneAgent\client.crt`
-4. Creates a Windows Service named `NexplaneAgent` using the Local System account
-5. Sets the service to `Automatic` startup and starts it
-
-## Managing the Service
+## Service Management
 
 ```powershell
 # Check status
 Get-Service NexplaneAgent
 
-# Start / stop / restart
-Start-Service NexplaneAgent
-Stop-Service NexplaneAgent
-Restart-Service NexplaneAgent
-
-# View recent logs
+# View logs
 Get-EventLog -LogName Application -Source NexplaneAgent -Newest 50
 
-# Follow logs in real time (requires PowerShell 5.1+)
-Get-EventLog -LogName Application -Source NexplaneAgent -Newest 1 -Wait
+# Restart
+Restart-Service NexplaneAgent
+
+# Stop
+Stop-Service NexplaneAgent
 ```
 
-## Firewall Configuration
+## Windows Command Packages
 
-The agent initiates outbound HTTPS connections to the control plane. On Windows Server with Windows Firewall enabled, you may need to allow outbound traffic on the control plane port:
+### winpatch
+
+Applies Windows updates using the Windows Update Agent (WUA) COM API:
+
+- `apply_windows_patches` — target specific KB article numbers or all pending updates; schedule reboot if required
+- `audit_windows_patch_status` — enumerate pending updates without applying
+
+### winharden
+
+Windows security hardening suite:
+
+| Area | Controls |
+|------|---------|
+| LAPS | Local Administrator Password Solution configuration |
+| Credential Guard | Enable/configure Windows Credential Guard |
+| PowerShell | Constrained Language Mode enforcement |
+| AppLocker | Application allowlist policy |
+| SMB | SMB signing enforcement, disable SMBv1 |
+| BitLocker | Enable BitLocker drive encryption |
+| Windows Firewall | Configure inbound/outbound rules |
+| TLS | Disable TLS 1.0/1.1, configure cipher suites |
+| RDP | NLA enforcement, session timeout, encryption level |
+| Audit Policy | Configure Windows audit policy |
+| Registry | Apply security-relevant registry hardening values |
+
+### IP Migration (Windows)
+
+The `changip` package supports Windows IP changes via `netsh`:
+
+- `change_ip` with `tailscale` method — change IP while staying reachable via Tailscale overlay
+- `change_ip` with `commit_timer` method — dead man's switch; `pending_rollback.json` written to disk, restored on restart if probe fails
+- `change_ip_rollback` — restore full pre-change network state
+
+## Self-Update on Windows
+
+The Windows agent checks for updates on startup and downloads the new binary if one is available. However, the atomic re-exec used on Linux (`syscall.Exec`) is not supported on Windows. The agent logs a message indicating the new version is ready and requires a service restart to apply:
+
+```
+New version 0.2.0 downloaded to C:\nexplane\nexplane-agent-0.2.0.exe. Restart the NexplaneAgent service to apply.
+```
+
+Restart the service via the Windows Service Manager or PowerShell:
 
 ```powershell
-New-NetFirewallRule `
-  -DisplayName "Nexplane Agent - Control Plane" `
-  -Direction Outbound `
-  -Protocol TCP `
-  -RemotePort 8000 `
-  -Action Allow
+Restart-Service NexplaneAgent
 ```
-
-Adjust the port to match your control plane configuration.
-
-## Supported Operations on Windows
-
-| Operation | Notes |
-|---|---|
-| Disable/Enable Local User | Uses `Disable-LocalUser` / `Enable-LocalUser` |
-| Rotate Local Password | Uses `Set-LocalUser -Password` |
-| Disable/Enable Service | Uses `Stop-Service` + `Set-Service -StartupType` |
-| Set File ACL | Uses `Set-Acl` with a validated ACL entry |
-| Apply CIS Profile | Applies registry, service, and audit policy changes per CIS Windows Server benchmark |
-| Set Registry Value | Uses `Set-ItemProperty` with validated path and value |
-
-## CIS Hardening on Windows
-
-CIS Windows Server profiles apply changes to:
-
-- Windows Firewall rules
-- Audit policy settings
-- Local security policy (account lockout, password complexity)
-- Registry-based security settings
-- Disabled unnecessary services (Telnet server, FTP server, SNMP, etc.)
-
-CIS Level 1 profiles are appropriate for most production servers. Level 2 profiles include more restrictive settings that may break some workloads -- test in staging before applying to production.
-
-## Troubleshooting
-
-**Service fails to start after installation:**
-
-Check the Event Log for errors:
-
-```powershell
-Get-EventLog -LogName Application -Source NexplaneAgent -Newest 20 | Format-List
-```
-
-Common causes:
-- Network access to control plane blocked by firewall
-- Enrollment token already used (tokens are single-use)
-- Clock skew between the agent host and control plane (mTLS certificate validation is time-sensitive -- ensure NTP is synchronized)
-
-**Agent registered but tasks are not executing:**
-
-The agent runs as Local System by default. If a task requires access to a network share or domain resource, the service may need to run as a domain service account. Change the service logon account in Services MMC (`services.msc`) and restart.
-
-**Uninstalling:**
-
-```powershell
-& "C:\Program Files\NexplaneAgent\nexplane-agent.exe" uninstall
-```
-
-This stops the service, removes the service definition, and deletes all agent files. It does not affect Windows Event Log entries from the agent's operation.

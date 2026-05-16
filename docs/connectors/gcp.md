@@ -1,46 +1,69 @@
 # GCP Connector
 
-The GCP connector uses the Google Cloud Python client libraries to interact with GCP services. It supports asset discovery across IAM, Compute Engine, and Cloud Storage, and can execute credential rotation and compute operations.
+The GCP connector uses Google Cloud Python client libraries to interact with Google Cloud services.
 
 ## Credential Fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| Name | string | Yes | Display name for this connector (e.g., `prod-gcp`) |
-| Service Account JSON | string (JSON) | Yes | Full JSON key file for a GCP service account |
-| Project ID | string | Yes | GCP project ID (e.g., `my-project-123`) |
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name (e.g., `prod-gcp`) |
+| Service Account JSON | Yes | Full JSON key file for a GCP service account |
+| Project ID | Yes | GCP project ID |
 
-The service account JSON is the file you download from GCP when creating a service account key. Paste the entire JSON content into the field.
+## Required IAM Roles
 
-## Supported Actions
+Grant the service account these roles on the project:
+
+- `roles/compute.admin`
+- `roles/iam.serviceAccountAdmin`
+- `roles/iam.serviceAccountKeyAdmin`
+- `roles/storage.admin`
+- `roles/dns.admin`
+- `roles/iam.securityAdmin` — required for IAM binding operations
+
+## Capabilities
+
+### Compute Engine
 
 | Action | Description | Rollback |
-|---|---|---|
-| Rotate Service Account Key | Creates a new key, disables the old one | Re-enable old key, disable new key |
-| Delete Service Account Key | Deletes a disabled service account key | No rollback |
-| Disable Service Account | Disables a GCP service account | Re-enable the service account |
-| Enable Service Account | Re-enables a disabled service account | Disable the service account |
-| Modify Firewall Rule | Updates an ingress or egress firewall rule | Restore the previous rule configuration |
-| Stop GCE Instance | Stops a running Compute Engine instance | Start the instance |
-| Start GCE Instance | Starts a stopped Compute Engine instance | Stop the instance |
+|--------|-------------|---------|
+| `gcp_instance_create` | Create a Compute instance | Delete the instance |
+| `gcp_instance_stop` | Stop a running instance | Start the instance |
+| `gcp_instance_start` | Start a stopped instance | Stop the instance |
+| `gcp_instance_reboot` | Reboot an instance | N/A |
+| `gcp_instance_snapshot` | Create a persistent disk snapshot | Delete the snapshot |
+| `gcp_instance_delete` | Delete an instance | Not available |
 
-## Minimum Permissions Required
+### Firewall
 
-Assign the following roles to the service account:
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `gcp_firewall_create` | Create a firewall rule | Delete the rule |
+| `gcp_firewall_delete` | Delete a firewall rule | Recreate the rule |
 
-For discovery:
-- `roles/iam.securityReviewer`
-- `roles/compute.viewer`
-- `roles/storage.objectViewer`
+### Storage
 
-For full change execution, additionally:
-- `roles/iam.serviceAccountKeyAdmin`
-- `roles/compute.instanceAdmin.v1`
-- `roles/compute.securityAdmin`
+| Action | Description |
+|--------|-------------|
+| Block public access | Configure public access prevention on a bucket |
 
-## Known Limitations
+### IAM & Service Accounts
 
-- GCP service account keys are global and not region-scoped. The `Project ID` field must match the project where the service account lives.
-- Firewall rule modifications apply at the network level and affect all instances in the network that match the rule's target tags or service accounts.
-- GCP does not support reactivating a deleted service account key. The rollback for key rotation re-enables a disabled key -- deleted keys cannot be recovered.
-- The connector currently supports single-project deployments. Multi-project (organization-level) asset discovery is on the roadmap.
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| Disable service account | Disable a service account | Re-enable the service account |
+| Rotate service account key | Create new key, delete old key | Not available — GCP does not support re-creating deleted keys |
+| IAM binding | Add or remove project-level IAM bindings | Reverse the binding |
+
+### Security Command Center
+
+| Action | Description |
+|--------|-------------|
+| SCC findings ingest | Import Security Command Center findings as vulnerability findings |
+
+### IaC
+
+| Action | Description |
+|--------|-------------|
+| Terraform local | Run `terraform apply` in backend container |
+| Ansible local | Run Ansible playbook via local connection to GCP instances |

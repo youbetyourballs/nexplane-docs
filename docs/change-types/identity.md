@@ -1,113 +1,78 @@
-# Identity Change Types
+# Identity & IAM Change Types
 
 Identity changes affect user accounts, service accounts, and group memberships across connected identity systems.
 
-## Lock User Account
+## User Lifecycle
 
-Disables a user account so the user cannot authenticate. The account is not deleted -- it can be unlocked. This is the recommended first response when a user account is suspected compromised.
+| Change Type | Description | Connectors |
+|-------------|-------------|-----------|
+| `offboard_user` | Atomically disables a user across AD, Okta, Entra ID, Google Workspace, GitHub, Slack; optionally isolates CrowdStrike-managed endpoints | AD, Okta, Entra ID, Google Workspace, GitHub, Slack, CrowdStrike |
+| `onboard_user` | Provisions user accounts across all connected identity systems from a single form | AD, Okta, Entra ID, Google Workspace, GitHub, Slack |
 
-**Supported connectors:** LDAP, Keycloak, AWS IAM, GCP IAM, PostgreSQL, MongoDB
+See [Identity Lifecycle](../features/identity-lifecycle.md) for the full offboarding phase breakdown.
 
-**Parameters:**
+## IAM Users (AWS)
 
-| Parameter | Type | Description |
-|---|---|---|
-| User | string | User identifier (DN for LDAP, email for Keycloak, ARN for AWS, etc.) |
-| Reason | string | Reason for locking (recorded in audit log) |
+| Change Type | Description | Rollback |
+|-------------|-------------|---------|
+| `iam_user_create` | Create an IAM user with optional group membership and policy attachment | Delete the created user |
+| `iam_user_delete` | Delete an IAM user and all associated keys and policies | Not available |
 
-**Execution per connector:**
+**Connector:** AWS
 
-| Connector | Mechanism |
-|---|---|
-| LDAP (AD) | Sets `userAccountControl` bit to disable login |
-| LDAP (OpenLDAP) | Sets `pwdAccountLockedTime` |
-| Keycloak | Sets `enabled: false` |
-| AWS | Attaches a deny-all inline policy |
-| GCP | Sets service account `disabled: true` |
-| PostgreSQL | `ALTER USER ... NOLOGIN` |
-| MongoDB | Sets `disabled: true` (MongoDB 4.4+) |
+## SaaS Identity Actions
 
-**Rollback:** Unlocks the account using the inverse operation for each connector.
+### Google Workspace
 
-**Risk base score:** 5 (medium -- may break dependent services if account is a service account)
+| Change Type | Description |
+|-------------|-------------|
+| `remove_from_groups` | Remove user from Google Groups |
+| `reset_2fa` | Reset two-factor authentication enrollment |
+| `revoke_oauth_tokens` | Revoke all OAuth app tokens for a user |
+| `wipe_mobile_device` | Remote wipe a mobile device associated with the account |
+| `suspend_user` | Suspend a Google Workspace user |
+| `unsuspend_user` | Unsuspend a Google Workspace user |
 
----
+### GitHub
 
-## Unlock User Account
+| Change Type | Description |
+|-------------|-------------|
+| `remove_org_member` | Remove a user from the GitHub organization |
+| `revoke_user_pats` | Revoke all personal access tokens for a user |
+| `enforce_branch_protection` | Apply branch protection rules to a repository |
+| `archive_repo` | Archive a GitHub repository |
+| `disable_actions` | Disable GitHub Actions on a repository |
+| `enable_actions` | Enable GitHub Actions on a repository |
 
-Re-enables a previously locked user account.
+### Slack
 
-**Supported connectors:** LDAP, Keycloak, AWS IAM, GCP IAM, PostgreSQL, MongoDB
+| Change Type | Description |
+|-------------|-------------|
+| `deactivate_user` | Deactivate a Slack user |
+| `reactivate_user` | Reactivate a Slack user |
 
-**Rollback:** Locks the account again.
+### Microsoft Entra ID
 
-**Risk base score:** 5 (medium -- re-enables access for a previously locked account)
+| Change Type | Description |
+|-------------|-------------|
+| `remove_from_teams` | Remove user from Microsoft Teams |
+| `assign_license` | Assign a Microsoft 365 license |
+| `remove_license` | Remove a Microsoft 365 license |
+| `revoke_sessions` | Revoke all active sessions |
+| `disable_user` | Disable an Entra ID user account |
 
----
+### Kubernetes
 
-## Add User to Group
+| Change Type | Description |
+|-------------|-------------|
+| `restart_deployment` | Restart all pods in a deployment |
+| `scale_deployment` | Scale a deployment up or down |
+| `apply_network_policy` | Apply a Kubernetes NetworkPolicy |
+| `update_rbac` | Update a RBAC role binding |
+| `rotate_secret` | Rotate a Kubernetes secret value |
+| `helm_upgrade` | Upgrade a Helm release |
+| `helm_rollback` | Roll back a Helm release to a previous revision |
 
-Adds a user to a group, granting any permissions inherited by group membership.
+## Access Reviews
 
-**Supported connectors:** LDAP, Keycloak
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| User | string | User DN (LDAP) or user ID (Keycloak) |
-| Group | string | Group DN (LDAP) or group ID (Keycloak) |
-
-**Rollback:** Removes the user from the group.
-
-**Risk base score:** 4-8 depending on group sensitivity (configured per group in Nexplane)
-
----
-
-## Remove User from Group
-
-Removes a user from a group, revoking inherited permissions.
-
-**Supported connectors:** LDAP, Keycloak
-
-**Rollback:** Adds the user back to the group.
-
-**Risk base score:** 4-7 depending on group sensitivity
-
----
-
-## Expire User Password
-
-Forces a user to change their password at next login. The user can still authenticate with their current password -- they are just prompted to change it.
-
-**Supported connectors:** LDAP
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| User DN | string | Full LDAP distinguished name of the user |
-
-**Execution:** Sets `pwdMustChange: TRUE` (OpenLDAP) or `pwdLastSet: 0` (Active Directory)
-
-**Rollback:** Clears the must-change flag.
-
-**Risk base score:** 2 (low -- does not block access)
-
----
-
-## Expire All Active Sessions
-
-Logs out all active sessions for a user without disabling the account. Useful for forcing re-authentication after a suspicious login event.
-
-**Supported connectors:** Keycloak
-
-**Parameters:**
-
-| Parameter | Type | Description |
-|---|---|---|
-| User ID | string | Keycloak user ID |
-
-**Rollback:** Not available (sessions cannot be restored once expired).
-
-**Risk base score:** 3 (low-medium -- user is immediately logged out but can log back in)
+Access reviews auto-generate identity change requests for revoked access. See [Identity Lifecycle](../features/identity-lifecycle.md#access-reviews).

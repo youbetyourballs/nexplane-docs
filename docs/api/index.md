@@ -2,193 +2,101 @@
 
 The Nexplane control plane exposes a REST API on port 8000. All endpoints use JSON for request and response bodies.
 
+## Interactive Documentation
+
+Interactive OpenAPI (Swagger UI) docs are available at:
+
+```
+http://localhost:8000/docs
+```
+
+ReDoc format:
+
+```
+http://localhost:8000/redoc
+```
+
 ## Authentication
 
-All API requests (except `/auth/login` and `/health`) require a Bearer token in the `Authorization` header:
+All endpoints require a Bearer JWT obtained from `POST /auth/login`:
+
+```bash
+curl -X POST http://localhost:8000/auth/login \
+  -H "Content-Type: application/json" \
+  -d '{"email": "admin@acme.example", "password": "admin123"}'
+```
+
+Response includes a `token` field. Pass it as:
 
 ```
 Authorization: Bearer <token>
 ```
 
-Obtain a token by calling `/auth/login`:
+## Endpoint Groups
 
-```bash
-curl -X POST http://localhost:8000/auth/login \
-  -H "Content-Type: application/json" \
-  -d '{"email": "admin@example.com", "password": "yourpassword"}'
-```
+| Group | Description |
+|-------|-------------|
+| `/auth/*` | Login, logout, current user |
+| `/assets/*` | Asset inventory CRUD, tag management, bulk tagging, ingest |
+| `/connectors/*` | Connector CRUD, test connection, credentials, schedule, ingest |
+| `/projects/*` | Project CRUD, member management, AI planning chat |
+| `/change-requests/*` | Full CR lifecycle (plan→approve→execute→verify→rollback) + batch progress |
+| `/runbooks/*` | Runbook CRUD, fork, trigger |
+| `/executions/*` | Execution status, resume checkpoint, abort |
+| `/vulnerability/*` | Findings CRUD, policies, SLA dashboard, CVE blast-radius, patch campaign |
+| `/vulnerability/webhooks/vulnerability-findings` | HMAC-verified webhook endpoint for scanner push |
+| `/ir/*` | IR playbook templates, execute, forensic bundles |
+| `/access-reviews/*` | Collect memberships, reviewer decisions, approve, auto-generate removal CRs |
+| `/compliance/*` | Baselines CRUD, drift alerts, evidence ZIP download, freeze windows |
+| `/maintenance-windows/*` | Maintenance window CRUD, status check |
+| `/agent/*` | Agent registration, job dispatch, result reporting |
+| `/settings/*` | AI providers, agent secret, remediation policies |
+| `/downloads/*` | Versioned agent binaries + SHA256 checksums + version file |
+| `/audit-events/*` | Immutable audit trail (read-only) |
 
-Response:
+## Key Endpoints
 
-```json
-{
-  "access_token": "eyJhbGciOiJSUzI1NiIsInR5cCI6IkpXVCJ9...",
-  "token_type": "bearer",
-  "expires_in": 3600
-}
-```
-
-Tokens expire after 1 hour. Use `/auth/refresh` to obtain a new token without re-entering credentials.
-
----
-
-## Endpoints
-
-### Health
-
-```
-GET /health
-```
-
-Returns the service status. No authentication required.
-
-**Response:**
-```json
-{
-  "status": "ok",
-  "db": "connected",
-  "version": "0.1.0"
-}
-```
-
----
-
-### Connectors
+### Change Request Lifecycle
 
 ```
-GET    /connectors           List all connectors
-POST   /connectors           Create a connector
-GET    /connectors/{id}      Get a connector
-PUT    /connectors/{id}      Update a connector
-DELETE /connectors/{id}      Delete a connector
-POST   /connectors/{id}/test Test connector connectivity
-POST   /connectors/{id}/discover  Trigger asset discovery
+POST   /change-requests/           Create a new CR (Draft)
+POST   /change-requests/{id}/plan  Submit for safety review → Planned
+POST   /change-requests/{id}/approve  Approve → Approved
+POST   /change-requests/{id}/execute  Execute → Executing → Completed
+POST   /change-requests/{id}/rollback  Trigger rollback → Rolled Back
+GET    /change-requests/{id}/progress  Poll batch execution progress
 ```
 
-**Create connector (AWS example):**
-
-```bash
-curl -X POST http://localhost:8000/connectors \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "name": "prod-aws",
-    "type": "aws",
-    "credentials": {
-      "aws_access_key_id": "AKIAIOSFODNN7EXAMPLE",
-      "aws_secret_access_key": "wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY",
-      "region": "us-east-1"
-    }
-  }'
-```
-
-**Note:** Credential fields are write-only. The `GET /connectors/{id}` response omits all credential values.
-
----
-
-### Assets
+### Agent
 
 ```
-GET /assets                       List all discovered assets
-GET /assets?connector_id={id}     Filter by connector
-GET /assets?type={type}           Filter by asset type (e.g., iam_user, ec2_instance)
-GET /assets/{id}                  Get a single asset
+POST   /agent/register             Register a new agent
+GET    /agent/jobs/next            Long-poll for next job (agent calls this)
+POST   /agent/result               Post job result (agent calls this)
 ```
 
----
-
-### Change Requests
+### Vulnerability Pipeline
 
 ```
-GET    /change-requests           List change requests
-POST   /change-requests           Create a change request
-GET    /change-requests/{id}      Get a change request
-POST   /change-requests/{id}/submit    Submit for approval
-POST   /change-requests/{id}/approve   Approve
-POST   /change-requests/{id}/reject    Reject
-POST   /change-requests/{id}/execute   Execute an approved change
-POST   /change-requests/{id}/rollback  Initiate rollback
+POST   /vulnerability/webhooks/vulnerability-findings   HMAC-verified webhook
+GET    /vulnerability/findings/                         List findings
+GET    /vulnerability/cve/{cve_id}/blast-radius         CVE blast-radius query
+POST   /vulnerability/patch-campaign                    Generate patch campaign CRs
+GET    /vulnerability/sla/config                        Get SLA config
+PUT    /vulnerability/sla/config                        Update SLA config
 ```
 
-**Create a change request:**
-
-```bash
-curl -X POST http://localhost:8000/change-requests \
-  -H "Authorization: Bearer $TOKEN" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "title": "Rotate prod-deploy IAM key",
-    "connector_id": "conn_abc123",
-    "change_type": "rotate_iam_access_key",
-    "target": {
-      "iam_user": "prod-deploy"
-    },
-    "description": "Quarterly credential rotation"
-  }'
-```
-
-**Change request states:**
+### Compliance
 
 ```
-draft -> submitted -> approved -> executing -> complete
-                  -> rejected
-                            -> failed
-                                     -> rolledback
+GET    /compliance/baselines/                   List compliance baselines
+POST   /compliance/baselines/                   Create baseline
+GET    /compliance/drift/                       List drift alerts
+GET    /compliance/evidence/{id}/download       Download evidence ZIP
+POST   /compliance/freeze-windows/              Create change freeze window
+DELETE /compliance/freeze-windows/{id}          Remove freeze window
 ```
 
----
+## Rate Limiting
 
-### Agents
-
-```
-GET    /agents                    List registered agents
-GET    /agents/{id}               Get agent details
-DELETE /agents/{id}               Revoke agent registration
-POST   /agents/enrollment-tokens  Create an enrollment token
-```
-
----
-
-### Audit Log
-
-```
-GET /audit                              List all audit events
-GET /audit?change_request_id={id}       Filter by change request
-GET /audit?user_id={id}                 Filter by user
-GET /audit?from={iso8601}&to={iso8601}  Filter by time range
-```
-
-All audit events include:
-- `timestamp`
-- `actor` (user email or `system`)
-- `event_type`
-- `resource_type` and `resource_id`
-- `payload` (event-specific details)
-
----
-
-## Rate Limits
-
-The API is rate-limited to 100 requests per minute per authenticated user. Rate limit headers are included in all responses:
-
-```
-X-RateLimit-Limit: 100
-X-RateLimit-Remaining: 87
-X-RateLimit-Reset: 1716000000
-```
-
----
-
-## OpenAPI / Swagger
-
-The full OpenAPI schema is available at:
-
-```
-http://localhost:8000/openapi.json
-```
-
-An interactive Swagger UI is available at:
-
-```
-http://localhost:8000/docs
-```
+No rate limiting is applied in the default configuration. For production deployments, configure rate limiting at the reverse proxy layer.

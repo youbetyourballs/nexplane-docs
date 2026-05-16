@@ -1,105 +1,98 @@
 # Deploy the Agent
 
-The Nexplane agent is a Go binary that runs on Linux, Windows, and macOS hosts. It handles local changes that cannot be made through a cloud API -- OS hardening, local user management, file permission changes, and package updates.
+The Nexplane Agent is a cross-platform Go binary that runs on managed machines and executes signed commands dispatched by the control plane. No inbound SSH or firewall rules required — the agent polls outbound.
 
-## How the Agent Works
+## How It Works
 
-The agent:
+1. The agent starts and registers itself with the control plane
+2. The managed machine appears automatically as an Asset in inventory
+3. The agent polls `GET /agent/jobs/next` in a long-poll loop
+4. When a job arrives, the agent verifies the HMAC-SHA256 signature, executes the command, and posts the result back
+5. The agent self-updates: on startup it checks the S3 `version` file and atomically replaces itself if behind
 
-1. Registers with the control plane using a one-time enrollment token
-2. Establishes a persistent mTLS connection to the control plane
-3. Polls for assigned change requests
-4. Executes approved changes using a built-in allowlist of permitted operations
-5. Reports results back to the control plane
+## Step 1: Generate an Agent Secret
 
-The agent never executes arbitrary commands. All operations are typed (e.g., `set_file_permission`, `disable_service`, `rotate_local_password`) and defined at compile time.
-
-## Step 1: Generate an Enrollment Token
-
-In the Nexplane UI, go to **Settings > Agents > New Enrollment Token**.
-
-Give the token a label (e.g., `web-server-01`) and click **Generate**. Copy the token -- it is shown only once.
+In the Nexplane UI, go to **Settings → Agent Configuration** (admin only) and click **Generate Secret**. Copy the secret — it is shown once. Store it securely.
 
 ## Step 2: Install the Agent
 
-=== "Linux (systemd)"
+The **Deploy Agent** panel in Settings pre-fills the install commands with your control plane URL, secret, and current version.
+
+=== "Linux (one-liner)"
 
     ```bash
-    curl -fsSL https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-linux-amd64 \
-      -o /usr/local/bin/nexplane-agent
-    chmod +x /usr/local/bin/nexplane-agent
+    VERSION=$(curl -fsSL https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/version)
+    curl -fsSL "https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/nexplane-agent-linux-amd64-${VERSION}" \
+      -o nexplane-agent && chmod +x nexplane-agent
+    ./nexplane-agent \
+      --control-plane https://nexplane.acme.example:8000 \
+      --secret sk-agent-<your-secret> \
+      --mode service
     ```
 
-    Create the systemd service:
+=== "Linux (systemd service)"
 
-    ```bash
-    nexplane-agent install \
-      --control-plane https://your-nexplane-host:8000 \
-      --token YOUR_ENROLLMENT_TOKEN
+    ```ini
+    [Unit]
+    Description=Nexplane Agent
+    After=network.target
+
+    [Service]
+    ExecStart=/usr/local/bin/nexplane-agent \
+      --control-plane https://nexplane.acme.example:8000 \
+      --secret sk-agent-<your-secret> \
+      --mode service \
+      --poll-interval 30s
+    Restart=on-failure
+
+    [Install]
+    WantedBy=multi-user.target
     ```
-
-    Start the service:
 
     ```bash
     systemctl enable --now nexplane-agent
     ```
 
-=== "Windows"
-
-    Download `nexplane-agent-windows-amd64.exe` from the releases page and run as Administrator:
+=== "Windows (PowerShell)"
 
     ```powershell
-    .\nexplane-agent-windows-amd64.exe install `
-      --control-plane https://your-nexplane-host:8000 `
-      --token YOUR_ENROLLMENT_TOKEN
+    New-Service -Name "NexplaneAgent" `
+      -BinaryPathName "C:\nexplane\nexplane-agent.exe --mode service --poll-interval 30s --control-plane https://nexplane.acme.example:8000 --secret <your-secret>" `
+      -StartupType Automatic
+    Start-Service NexplaneAgent
     ```
-
-    This installs and starts a Windows Service named `NexplaneAgent`.
-
-=== "macOS"
-
-    ```bash
-    curl -fsSL https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-darwin-arm64 \
-      -o /usr/local/bin/nexplane-agent
-    chmod +x /usr/local/bin/nexplane-agent
-
-    nexplane-agent install \
-      --control-plane https://your-nexplane-host:8000 \
-      --token YOUR_ENROLLMENT_TOKEN
-    ```
-
-    This installs a launchd plist at `/Library/LaunchDaemons/ai.nexplane.agent.plist`.
 
 ## Step 3: Verify Registration
 
-After the agent starts, return to **Settings > Agents** in the UI. The host should appear with status **Registered** within 30 seconds.
+After the agent starts, it registers itself and appears as an Asset in **Asset Inventory** within a few seconds. The asset shows hostname, OS, agent version, and last-seen timestamp.
 
-Click the agent row to see:
+## Flag / Environment Variable Reference
 
-- Hostname and OS version
-- Agent version
-- Last heartbeat timestamp
-- Assigned change requests
+| Flag | Env var | Default | Description |
+|------|---------|---------|-------------|
+| `--control-plane` | `NP_CONTROL_PLANE` | (required) | Control plane URL |
+| `--secret` | `NP_SECRET` | (required) | Agent HMAC secret |
+| `--mode` | `NP_MODE` | `service` | `service` (persistent) or `ephemeral` (run once) |
+| `--hostname` | `NP_HOSTNAME` | OS hostname | Override the registered hostname |
+| `--poll-interval` | `NP_POLL_INTERVAL` | `30s` | How often to poll for jobs |
 
-## Step 4: Run a Test Change
+## Agent Binary Distribution
 
-With the agent registered, you can assign it a hardening change. Go to **Change Requests > New Change Request**, select change type **Hardening - Disable Unused Services**, and select the registered agent as the target.
+Binaries are published to a public S3 bucket after each build:
 
-Submit, approve, and execute. The agent will receive the task, execute it, and report back with a success or failure status.
-
-## Troubleshooting
-
-If the agent does not appear in the UI after 60 seconds, check the agent logs:
-
-```bash
-# Linux
-journalctl -u nexplane-agent -f
-
-# Windows
-Get-EventLog -LogName Application -Source NexplaneAgent -Newest 50
-
-# macOS
-log stream --predicate 'subsystem == "ai.nexplane.agent"'
+```
+https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/
+  nexplane-agent-linux-amd64-{VERSION}
+  nexplane-agent-linux-arm64-{VERSION}
+  nexplane-agent-windows-amd64-{VERSION}.exe
+  + .sha256 sidecar for each
+  version  (plain text: current version string)
 ```
 
-See also: [Agent Registration Failure Runbook](../runbooks/agent-registration-failure.md)
+For self-hosted distributions, set `NEXPLANE_AGENT_DOWNLOAD_URL` in the backend environment.
+
+## Next Steps
+
+- [Agent command packages reference](../agent/commands.md)
+- [Agent self-update](../agent/self-update.md)
+- [Windows agent](../agent/windows.md)

@@ -1,6 +1,6 @@
 # Installation
 
-Nexplane runs as a set of Docker containers managed by Docker Compose. This page walks you through getting the control plane running locally or on a server in about 5 minutes.
+Nexplane runs as a set of Docker containers managed by Docker Compose. This page walks you through getting the control plane running locally or on a server.
 
 ## Prerequisites
 
@@ -9,13 +9,7 @@ Nexplane runs as a set of Docker containers managed by Docker Compose. This page
 - 2 GB RAM minimum (4 GB recommended)
 - Ports 8000 (API) and 3000 (UI) available
 
-## Step 1: Pull the Compose File
-
-```bash
-curl -O https://raw.githubusercontent.com/youbetyourballs/nexplane/main/docker-compose.yml
-```
-
-Or clone the repo:
+## Step 1: Clone the Repository
 
 ```bash
 git clone https://github.com/youbetyourballs/nexplane.git
@@ -25,19 +19,18 @@ cd nexplane
 ## Step 2: Start the Stack
 
 ```bash
-docker compose up -d
+docker compose up --build
 ```
 
-This starts:
+This starts three containers:
 
 | Service | Port | Description |
-|---|---|---|
-| `backend` | 8000 | FastAPI control plane API |
+|---------|------|-------------|
+| `backend` | 8000 | FastAPI control plane API (bound to 127.0.0.1 — not public internet) |
 | `frontend` | 3000 | React UI |
 | `db` | 5432 | PostgreSQL (internal only) |
-| `redis` | 6379 | Task queue (internal only) |
 
-Wait about 30 seconds for the database migrations to complete. You can watch the logs:
+Wait about 30 seconds for database migrations to complete. Watch the logs:
 
 ```bash
 docker compose logs -f backend
@@ -49,31 +42,30 @@ When you see `Application startup complete`, the backend is ready.
 
 Navigate to [http://localhost:3000](http://localhost:3000).
 
-On first launch, Nexplane will prompt you to create an admin account. Enter your email and a password. This account has full access to all connectors and change requests.
+Log in with the demo credentials:
+
+| Email | Password | Role |
+|-------|----------|------|
+| admin@acme.example | admin123 | Admin |
+| operator@acme.example | operator123 | Security Operator |
+| approver@acme.example | approver123 | Approver |
+| auditor@acme.example | auditor123 | Auditor |
 
 ## Step 4: Verify the API
 
-```bash
-curl http://localhost:8000/health
-```
-
-Expected response:
-
-```json
-{"status": "ok", "db": "connected", "version": "0.1.0"}
-```
+Interactive API docs are at [http://localhost:8000/docs](http://localhost:8000/docs).
 
 ## Environment Variables
 
-The following variables can be set in a `.env` file in the same directory as `docker-compose.yml`:
-
 | Variable | Default | Description |
-|---|---|---|
-| `SECRET_KEY` | auto-generated | JWT signing key -- set this in production |
-| `DATABASE_URL` | internal Postgres | Override to use an external database |
-| `REDIS_URL` | internal Redis | Override to use an external Redis |
-| `CORS_ORIGINS` | `http://localhost:3000` | Allowed frontend origins |
-| `LOG_LEVEL` | `info` | `debug`, `info`, `warning`, `error` |
+|----------|---------|-------------|
+| `SECRET_KEY` | dev key | JWT + Fernet key derivation — **change in production** |
+| `DATABASE_URL` | internal Postgres | Override for external database |
+| `CORS_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Allowed frontend origins |
+| `ENVIRONMENT` | `development` | Environment name |
+| `AI_MODEL` | `claude-sonnet-4-6` | Anthropic model for AI planning |
+| `WEBHOOK_SECRET` | dev key | HMAC key for vulnerability scanner webhook verification |
+| `NEXPLANE_AGENT_DOWNLOAD_URL` | S3 base URL | Override for self-hosted agent binary distribution |
 
 !!! warning "Production deployments"
     Always set `SECRET_KEY` to a random 32-byte hex string in production. The auto-generated key changes on container restart, which invalidates all active sessions.
@@ -81,10 +73,6 @@ The following variables can be set in a `.env` file in the same directory as `do
     ```bash
     python3 -c "import secrets; print(secrets.token_hex(32))"
     ```
-
-## Upgrading
-
-See the [Upgrade Runbook](../runbooks/upgrade.md) for instructions on upgrading between versions.
 
 ## Next Step
 

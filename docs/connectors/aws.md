@@ -1,91 +1,124 @@
 # AWS Connector
 
-The AWS connector uses the boto3 SDK to interact with AWS services. It supports asset discovery across IAM, EC2, S3, and VPC, and can execute identity, compute, and credential change types against the discovered assets.
+The AWS connector uses the boto3 SDK to interact with AWS services. It supports asset discovery and change execution across EC2, IAM, S3, Route53, RDS, CloudWatch, ALB, and more.
 
 ## Credential Fields
 
-| Field | Type | Required | Description |
-|---|---|---|---|
-| Name | string | Yes | Display name for this connector (e.g., `prod-aws`) |
-| AWS Access Key ID | string | Yes | IAM access key ID (`AKIA...`) |
-| AWS Secret Access Key | string | Yes | IAM secret access key |
-| Default Region | string | Yes | Default region for regional API calls (e.g., `us-east-1`) |
-| Account ID | string | No | AWS account ID -- used for display only |
-| Role ARN | string | No | If set, Nexplane assumes this role before making API calls |
-| External ID | string | No | External ID for cross-account role assumption |
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name (e.g., `prod-aws`) |
+| AWS Access Key ID | Yes | IAM access key ID (`AKIA...`) |
+| AWS Secret Access Key | Yes | IAM secret access key |
+| Default Region | Yes | Default region for regional API calls (e.g., `us-east-1`) |
+| Account ID | No | AWS account ID — for display only |
+| Role ARN | No | If set, Nexplane assumes this role before making API calls |
+| External ID | No | External ID for cross-account role assumption |
 
-## Supported Actions
+## Required Permissions
+
+Create an IAM user with programmatic access and attach these managed policies:
+
+- `AmazonEC2FullAccess`
+- `AmazonSSMFullAccess`
+- `IAMFullAccess`
+- `AmazonRDSFullAccess`
+- `AmazonRoute53FullAccess`
+- `AmazonS3FullAccess`
+- `CloudWatchFullAccess`
+
+Also attach or create a policy granting `sts:GetCallerIdentity`.
+
+!!! note "AWS Free Tier"
+    Free Tier accounts cannot launch Windows EC2 instances. Windows Server AMIs require a paid account.
+
+## Capabilities
+
+### EC2
 
 | Action | Description | Rollback |
-|---|---|---|
-| Rotate IAM Access Key | Creates a new access key, deactivates the old one | Re-activate old key, deactivate new key |
-| Delete IAM Access Key | Deletes an inactive access key | No rollback (deleted keys cannot be recovered) |
-| Lock IAM User | Attaches a deny-all inline policy to the user | Remove the deny policy |
-| Unlock IAM User | Removes the Nexplane deny-all inline policy | Re-attach the deny policy |
-| Modify Security Group Rule | Adds or removes an inbound or outbound rule | Reverse the rule change |
-| Snapshot EC2 Instance | Creates an EBS snapshot of all volumes | Delete the snapshot |
-| Stop EC2 Instance | Stops a running instance | Start the instance |
-| Start EC2 Instance | Starts a stopped instance | Stop the instance |
-| Update S3 Bucket Policy | Replaces the bucket policy | Restore the previous policy |
-| Block S3 Public Access | Enables the S3 block public access settings | Disable block public access (use with caution) |
+|--------|-------------|---------|
+| `ec2_launch` | Launch an EC2 instance | Terminate the instance |
+| `ec2_start` | Start a stopped instance | Stop the instance |
+| `ec2_stop` | Stop a running instance | Start the instance |
+| `ec2_reboot` | Reboot an instance | N/A |
+| `ec2_terminate` | Terminate an instance | Not available |
+| `snapshot_asset` | Create EBS snapshot of all attached volumes | Delete snapshots |
+| `deploy_nexplane_agent` | Install Nexplane Agent via SSM | Uninstall agent |
 
-## Minimum Permissions Required
+### Key Pairs
 
-For asset discovery only:
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `key_pair_create` | Create an EC2 key pair | Delete the key pair |
+| `key_pair_delete` | Delete an EC2 key pair | Not available |
 
-```json
-{
-  "Version": "2012-10-17",
-  "Statement": [
-    {
-      "Effect": "Allow",
-      "Action": [
-        "iam:ListUsers",
-        "iam:ListAccessKeys",
-        "iam:ListRoles",
-        "iam:GetUser",
-        "ec2:DescribeInstances",
-        "ec2:DescribeSecurityGroups",
-        "ec2:DescribeRegions",
-        "s3:ListAllMyBuckets",
-        "s3:GetBucketLocation",
-        "sts:GetCallerIdentity"
-      ],
-      "Resource": "*"
-    }
-  ]
-}
-```
+### IAM
 
-For full change execution, add:
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `iam_user_create` | Create an IAM user | Delete the user |
+| `iam_user_delete` | Delete an IAM user | Not available |
+| `rotate_api_key` | Create new IAM access key, deactivate old | Re-activate old key |
+| Attach/detach policy | Attach or detach managed policy | Reverse attachment |
 
-```json
-{
-  "Effect": "Allow",
-  "Action": [
-    "iam:CreateAccessKey",
-    "iam:UpdateAccessKey",
-    "iam:DeleteAccessKey",
-    "iam:PutUserPolicy",
-    "iam:DeleteUserPolicy",
-    "ec2:CreateSnapshot",
-    "ec2:StopInstances",
-    "ec2:StartInstances",
-    "ec2:AuthorizeSecurityGroupIngress",
-    "ec2:RevokeSecurityGroupIngress",
-    "ec2:AuthorizeSecurityGroupEgress",
-    "ec2:RevokeSecurityGroupEgress",
-    "s3:PutBucketPolicy",
-    "s3:PutBucketPublicAccessBlock"
-  ],
-  "Resource": "*"
-}
-```
+### S3
 
-## Known Limitations
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `s3_bucket_create` | Create an S3 bucket | Delete the bucket |
+| `s3_bucket_delete` | Delete an S3 bucket | Not available |
+| `s3_lifecycle_configure` | Configure lifecycle rules | Restore previous rules |
+| Block public access | Configure public access block settings | Restore previous settings |
+| Bucket policy | Apply or remove bucket policy | Restore previous policy |
 
-- IAM access keys can only be rotated if the user currently has fewer than 2 active keys. If the user already has 2 keys, you must delete one before rotating.
-- EC2 snapshots are created asynchronously. Nexplane waits up to 10 minutes for the snapshot to reach the `completed` state before reporting success.
-- Security group rules are matched by the exact protocol, port, and CIDR. Rules that use references to other security groups (rather than CIDRs) are not currently supported for modification.
-- Cross-region operations require the connector to be configured with appropriate permissions in each region. The `Default Region` field controls which region is used for regional calls.
-- The connector uses the default boto3 retry configuration (3 retries with exponential backoff). Throttling errors from AWS will be retried automatically.
+### Route53
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `route53_zone_create` | Create a hosted zone | Delete the zone |
+| `route53_record_upsert` | Create or update a DNS record | Delete or restore record |
+| `route53_record_delete` | Delete a DNS record | Recreate the record |
+| DR failover | Update weighted routing for DR | Restore original weights |
+
+### RDS
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `rds_instance_create` | Create an RDS instance | Delete the instance |
+| `rds_instance_delete` | Delete an RDS instance | Not available |
+| `rds_snapshot_create` | Create an RDS snapshot | Delete the snapshot |
+| `promote_db_replica` | Promote a read replica to standalone + update Route53 CNAME | Not available (`rollback_supported: false`) |
+
+### CloudWatch
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `cloudwatch_alarm_create` | Create a CloudWatch alarm | Delete the alarm |
+| `cloudwatch_alarm_delete` | Delete a CloudWatch alarm | Recreate the alarm |
+
+### ALB
+
+| Action | Description |
+|--------|-------------|
+| Create/delete ALB | Create or delete an Application Load Balancer |
+| Target groups + listeners | Create, delete, modify, register targets |
+
+### Network
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `security_group_update` | Add or remove security group rules | Restore original ruleset |
+| `tailscale_join` | Install Tailscale on an EC2 instance via SSM and join the tailnet | `tailscale_remove` |
+| `tailscale_remove` | Remove the instance from the Tailscale tailnet | N/A |
+
+### SSM
+
+| Action | Description |
+|--------|-------------|
+| `ssm_command` | Run an approved SSM document against an EC2 instance |
+
+Only allow-listed SSM documents can be executed — freeform shell is blocked by the safety engine.
+
+## Cross-Account Access
+
+For cross-account scenarios, set **Role ARN** and optionally **External ID**. Nexplane will call `sts:AssumeRole` before making any AWS API calls. The base IAM user only needs `sts:AssumeRole` permission.

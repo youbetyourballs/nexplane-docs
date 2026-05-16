@@ -1,79 +1,39 @@
 # Security Model
 
-This page describes Nexplane's security architecture: what trust assumptions it makes, where it enforces boundaries, and what threats it is and is not designed to address.
-
-## Threat Model
-
-Nexplane is designed to address:
-
-- **Uncontrolled infrastructure changes** -- changes made outside a review and approval process
-- **Credential sprawl** -- credentials that are never rotated or are over-privileged
-- **Missing audit trails** -- inability to answer "who changed what, when, and why"
-- **Slow incident response** -- hours or days to revoke a compromised credential
-
-Nexplane is not designed to replace:
-
-- Network firewalls or security groups
-- Endpoint detection and response (EDR)
-- Runtime security monitoring
-- Vulnerability scanning
+Nexplane's security model is built around three principles: every action is authenticated, every change is audited, and credentials never leave the control plane unencrypted.
 
 ## Authentication
 
-**User authentication:**
-Users authenticate with email and password. Passwords are hashed with bcrypt (cost factor 12). Nexplane does not store plaintext passwords. JWT tokens (RS256, 1-hour TTL) are issued on login.
+**User authentication:** JWT + bcrypt. Users log in via `POST /auth/login` and receive a JWT. All API endpoints require a valid Bearer JWT. Tokens expire and require re-authentication.
 
-SSO integration (SAML, OIDC) is on the roadmap. Until then, Nexplane manages its own user database.
-
-**Agent authentication:**
-Agents authenticate with mutual TLS. Each agent has a unique RSA-2048 key pair. The private key is generated on the agent host at enrollment time and never leaves the host. The control plane issues a signed certificate valid for 1 year. The agent uses the certificate for all communication with the control plane.
+**Agent authentication:** HMAC-SHA256. The agent registers with a shared secret generated in Settings → Agent Configuration. Every job payload dispatched to an agent is signed with this secret. The agent verifies the signature before executing any command — jobs with invalid signatures are rejected unconditionally.
 
 ## Authorization
 
-**Role-based access control:**
+Role-based access control with four roles:
 
 | Role | Capabilities |
-|---|---|
-| Admin | Full access to all connectors, change requests, users, and settings |
-| Operator | Can create, submit, and execute change requests; cannot manage connectors or users |
-| Approver | Can approve or reject change requests; cannot create or execute |
-| Viewer | Read-only access to change requests and assets |
+|------|-------------|
+| Admin | Full access — connectors, settings, agent secret, approvals, all CRs |
+| Security Operator | Create and execute change requests; manage assets and connectors |
+| Approver | Approve change requests; view all CRs |
+| Auditor | Read-only access to CRs, audit log, assets |
 
-Roles are assigned per user. Future versions will support connector-scoped roles (e.g., "Operator for prod-aws only").
+Additionally, the `ir_responder` role grants bypass capability for change freeze windows during active incidents.
 
-## Connector Credential Security
+## Credential Protection
 
-Connector credentials (AWS keys, LDAP passwords, etc.) are stored encrypted in PostgreSQL. The encryption uses AES-256-GCM with a key derived from the `SECRET_KEY` environment variable.
+All connector credentials are encrypted with `SecretsService` (Fernet AES-256) before being stored. Credentials are decrypted in memory only during connector operation execution. They are never returned in GET responses and never written to logs.
 
-- Credentials are encrypted before writing to the database
-- Credentials are decrypted in memory only during connector operations
-- Plaintext credentials are never logged, returned in API responses, or written to disk
-- The encryption key is only available in the backend process environment
+See [Credential Storage](credentials.md) for the full implementation.
 
-See [Credential Storage](credentials.md) for implementation details.
+## Agent Security
 
-## Agent Command Allowlist
-
-The Go agent does not execute arbitrary commands. All operations are typed structs defined at compile time. The control plane cannot instruct the agent to run a shell command that is not in the allowlist. This limits the impact of a compromised control plane on agent-managed hosts.
-
-## Network Security
-
-- All communication uses TLS 1.2 or higher
-- Agent connections use mutual TLS (both sides present certificates)
-- The agent initiates connections to the control plane -- the control plane never connects outbound to agents
-- Connector API calls use the connector's own credentials -- Nexplane does not proxy arbitrary API calls
+- Agent jobs are HMAC-SHA256 signed — no unsigned job will execute
+- The agent only executes typed commands registered at compile time — no arbitrary shell
+- The agent communicates outbound only — no inbound network access required on managed hosts
+- Binary integrity: SHA256 checksum verified before self-update takes effect
 
 ## Audit Trail
 
-Every state transition in Nexplane is recorded in the audit log:
-
-- Immutable -- audit records are append-only and cannot be modified or deleted through the API
-- Comprehensive -- includes the actor, timestamp, event type, resource, and full payload
-- Queryable -- available via the UI and API with time-range and resource filters
-
-## What Nexplane Does Not Protect Against
-
-- A compromised admin account -- if an attacker obtains admin credentials, they can create and execute change requests. Enable MFA (SSO) and follow least-privilege principles.
-- A compromised `SECRET_KEY` -- this key can decrypt all stored connector credentials. Store it in a secrets manager and rotate it periodically.
-- Supply chain attacks on the Nexplane codebase itself
-- Changes made outside Nexplane (directly in the AWS console, direct SSH, etc.) -- Nexplane has no way to detect or block out-of-band changes
+Every state transition on a change request, every approval, every execution, and every rollback is recorded immutably in the `audit_events` table with a timestamp, acting user, and full payload. The audit trail is queryable via `GET /audit-events/` but not deletable or modifiable by any user or role.

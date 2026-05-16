@@ -14,7 +14,7 @@ Connector credentials (API keys, service principal secrets, private keys) are en
 
 ## Connector Count
 
-Nexplane includes 38+ connectors across six categories:
+Nexplane includes 65+ connectors across six categories:
 
 | Category | Connectors |
 |----------|-----------|

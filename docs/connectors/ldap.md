@@ -1,8 +1,19 @@
-# LDAP Connector
+# LDAP / Active Directory
 
-!!! note "Coming soon"
-    The LDAP connector is planned but not yet available. This page will be updated when the connector is released.
+The LDAP connector supports OpenLDAP-compatible directories.
 
-## Planned Capabilities
+!!! note
+    For Microsoft Active Directory, use the dedicated [Active Directory connector](active-directory.md), which has full AD-specific support (user lifecycle, OU management, service account rotation).
 
-The LDAP connector will support generic RFC 4511-compliant LDAP directories (OpenLDAP, FreeIPA, and similar). Planned capabilities include user/group discovery, account enable/disable, OU management, and password resets. For Microsoft Active Directory, see the [Active Directory connector](active-directory.md), which is already available.
+## Credential Fields
+
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name |
+| (Connection fields configured per-deployment) | | |
+
+## Capabilities
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `ldap_disable_user` | Disable an LDAP user account by setting `pwdAccountLockedTime` | Re-enable the account |

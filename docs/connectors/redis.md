@@ -1,8 +1,18 @@
-# Redis Connector
+# Redis
 
-!!! note "Coming soon"
-    The Redis connector is planned but not yet available. This page will be updated when the connector is released.
+The Redis connector manages Redis AUTH passwords.
 
-## Planned Capabilities
+## Credential Fields
 
-The Redis connector will support key inspection, ACL management, and cluster health discovery for Redis instances.
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name |
+| Host | Yes | Redis server hostname or IP |
+| Port | No | Redis port (default: 6379) |
+| Current Auth Password | No | Existing requirepass value (required if AUTH is enabled) |
+
+## Capabilities
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `rotate_redis_password` | Rotate the Redis `requirepass` via `CONFIG SET`. Stores the old password in the execution result for rollback. | Restore previous password |

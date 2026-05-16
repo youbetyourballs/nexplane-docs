@@ -1,8 +1,16 @@
-# Keycloak Connector
+# Keycloak
 
-!!! note "Coming soon"
-    The Keycloak connector is planned but not yet available. This page will be updated when the connector is released.
+The Keycloak connector manages user accounts in Keycloak via the Admin REST API.
 
-## Planned Capabilities
+## Credential Fields
 
-The Keycloak connector will support user/group discovery across Keycloak realms, account enable/disable, client secret rotation, and session revocation using the Keycloak Admin REST API.
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name |
+| (Connection fields configured per-deployment) | | |
+
+## Capabilities
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `keycloak_disable_user` | Disable a Keycloak user account and revoke all active sessions | Re-enable the account |

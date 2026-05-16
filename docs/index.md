@@ -19,7 +19,7 @@ Nexplane gives security teams a governed execution layer:
 - **AI Planning Assistant** — describe your goal, get a structured change plan referencing your actual asset inventory
 - **Composable Runbooks** — chain change types into reusable multi-step workflows with conditional branching and human checkpoints
 - **Asset Inventory** — servers, cloud accounts, firewalls, identities, applications — discoverable via connectors
-- **Connectors** — 38+ integrations spanning cloud, identity, EDR, IaC, ticketing, and observability
+- **Connectors** — 65+ integrations spanning cloud, identity, EDR, IaC, ticketing, and observability
 - **Nexplane Agent** — a cross-platform Go binary that runs on managed machines, reaches out to the control plane, and executes signed commands — no inbound SSH required
 - **Incident Response Playbooks** — pre-defined fast-path workflows for host isolation, account lockdown, evidence preservation, and phishing response
 - **Vulnerability Remediation Pipeline** — close the loop between scanner findings and automated remediation
@@ -46,7 +46,7 @@ Nexplane gives security teams a governed execution layer:
 │  RunbookExecutor · IRExecutor · FleetExecutor · IaCExecutor              │
 │  VulnRemediationEngine · IdentityResolver · DriftDetection               │
 │                                                                          │
-│  Connectors — change actions + ingest (38+ connectors)                   │
+│  Connectors — change actions + ingest (65+ connectors)                   │
 │  aws · azure · gcp · cloudflare · okta · paloalto · ssh                 │
 │  active_directory · entra_id · crowdstrike · tenable · kubernetes        │
 │  tailscale · terraform_local · ansible_local · ...                      │

@@ -1,8 +1,17 @@
-# MongoDB Connector
+# MongoDB
 
-!!! note "Coming soon"
-    The MongoDB connector is planned but not yet available. This page will be updated when the connector is released.
+The MongoDB connector manages MongoDB user credentials.
 
-## Planned Capabilities
+## Credential Fields
 
-The MongoDB connector will support database user provisioning, role management, and collection-level access control for MongoDB instances.
+| Field | Required | Description |
+|-------|----------|-------------|
+| Name | Yes | Display name |
+| Connection URI | Yes | MongoDB connection URI (e.g. `mongodb://admin:password@localhost:27017`) |
+| Auth Database | No | Authentication database (default: admin) |
+
+## Capabilities
+
+| Action | Description | Rollback |
+|--------|-------------|---------|
+| `rotate_mongodb_password` | Rotate a MongoDB user's password via the `updateUser` command | Restore previous password |

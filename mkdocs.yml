@@ -63,6 +63,7 @@ nav:
     - AWS: connectors/aws.md
     - Azure: connectors/azure.md
     - GCP: connectors/gcp.md
+    - OCI: connectors/oci.md
     - Cloudflare: connectors/cloudflare.md
     - Palo Alto: connectors/paloalto.md
     - Tailscale: connectors/tailscale.md
@@ -93,7 +94,6 @@ nav:
     - Ansible (Local): connectors/ansible-local.md
     - Ansible (Remote): connectors/ansible-remote.md
     - Nexplane Agent Connector: connectors/nexplane-agent.md
-    - OCI: connectors/oci.md
     - LDAP: connectors/ldap.md
     - Keycloak: connectors/keycloak.md
     - WinRM: connectors/winrm.md

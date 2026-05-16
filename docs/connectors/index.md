@@ -11,6 +11,7 @@ Nexplane includes 38+ connectors across six categories.
 | [AWS](aws.md) | EC2 lifecycle, IAM, S3, Route53, RDS, CloudWatch, ALB, security groups, SSM, Tailscale, agent deploy |
 | [Azure](azure.md) | VM lifecycle, NSG, blob storage, managed identity, RBAC, VNet, DNS, SQL, Monitor alerts, Entra users |
 | [GCP](gcp.md) | Compute lifecycle, firewall rules, storage, service accounts, IAM, SCC |
+| [OCI](oci.md) | Compute lifecycle, VCN/NSG/security lists, object storage, block volumes, IAM, ADB, MySQL, DNS, Vault, monitoring |
 | [Cloudflare](cloudflare.md) | WAF, firewall rules, access policies, block IP, SSL mode, DNS |
 | [Palo Alto](paloalto.md) | Address objects, rules, zones, block IP, commit |
 | [Tailscale](tailscale.md) | Join/remove nodes, auth key management |
@@ -71,7 +72,7 @@ Nexplane includes 38+ connectors across six categories.
 
 The following connectors are in development:
 
-[OCI](oci.md) · [LDAP](ldap.md) · [Keycloak](keycloak.md) · [WinRM](winrm.md) · [PostgreSQL](postgres.md) · [Redis](redis.md) · [MongoDB](mongodb.md)
+[LDAP](ldap.md) · [Keycloak](keycloak.md) · [WinRM](winrm.md) · [PostgreSQL](postgres.md) · [Redis](redis.md) · [MongoDB](mongodb.md)
 
 ## Adding a Connector
 

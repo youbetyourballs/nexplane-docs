@@ -51,7 +51,7 @@ Connectors are Python modules that wrap external system APIs. Each connector dec
 - What actions it supports (mapped to change types)
 - What the rollback for each action looks like
 
-Connectors run inside the backend process. They are not separate services. The connector library currently includes 14 connectors across cloud, identity, secrets, database, and host categories.
+Connectors run inside the backend process. They are not separate services. The connector library currently includes over 70 connectors across cloud, identity, secrets, database, network, and host categories.
 
 See [Connectors](../connectors/index.md) for the full list.
 

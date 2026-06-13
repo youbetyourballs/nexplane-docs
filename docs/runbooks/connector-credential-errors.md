@@ -40,7 +40,7 @@ To update credentials: click **Edit** on the connector in the Nexplane UI and re
 
 ### "AccessDenied"
 
-The key is valid but lacks permissions for the operation. Check the minimum permissions listed in [AWS Connector](../connectors/aws.md#minimum-permissions-required) and compare against the IAM policy attached to the user.
+The key is valid but lacks permissions for the operation. Check the minimum permissions listed in [AWS Connector](../connectors/aws.md#required-permissions) and compare against the IAM policy attached to the user.
 
 ---
 
@@ -115,7 +115,7 @@ The Vault token lacks the required policy for the operation. Check the policies 
 vault token lookup <token>
 ```
 
-Compare the listed policies against the minimum permissions in [Vault Connector](../connectors/vault.md#minimum-permissions-required).
+Compare the listed policies against the token policies in [Vault Connector](../connectors/vault.md#credential-fields).
 
 ### "token expired"
 

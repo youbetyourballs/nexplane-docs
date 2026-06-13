@@ -73,7 +73,7 @@ The connector credentials do not have permission to perform the rollback operati
 - The IAM policy was changed after the connector was created
 - The connector credentials were rotated and the new credentials have fewer permissions
 
-**Resolution:** Update the connector credentials to a key with the required permissions. See [AWS Connector Permissions](../connectors/aws.md#minimum-permissions-required).
+**Resolution:** Update the connector credentials to a key with the required permissions. See [AWS Connector Permissions](../connectors/aws.md#required-permissions).
 
 ---
 

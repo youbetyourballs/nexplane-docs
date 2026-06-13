@@ -37,6 +37,11 @@ nav:
     - Asset Inventory: concepts/asset-inventory.md
     - Connectors: concepts/connectors.md
     - The Nexplane Agent: concepts/agent.md
+  - Architecture:
+    - Overview: architecture/overview.md
+    - Control Plane: architecture/control-plane.md
+    - Agent: architecture/agent.md
+    - Data Residency: architecture/data-residency.md
   - Features:
     - Composable Runbooks: features/runbooks.md
     - Incident Response: features/incident-response.md
@@ -59,6 +64,7 @@ nav:
     - Backup & Recovery: change-types/backup.md
     - Compliance: change-types/compliance.md
     - Incident Response: change-types/incident-response.md
+    - Vulnerability Remediation: change-types/vulnerability.md
     - Telemetry: change-types/telemetry.md
   - Connectors:
     - Overview: connectors/index.md
@@ -150,10 +156,15 @@ nav:
   - Security:
     - Security Model: security/model.md
     - Authentication & SSO: security/authentication.md
-    - Editions & First-Run Setup: security/editions.md
     - Credential Storage: security/credentials.md
     - Safety Engine: security/safety-engine.md
     - Network Exposure: security/network-exposure.md
+  - Runbooks:
+    - Overview: runbooks/index.md
+    - Agent Registration Failure: runbooks/agent-registration-failure.md
+    - Connector Credential Errors: runbooks/connector-credential-errors.md
+    - Rollback Failure: runbooks/rollback-failure.md
+    - Upgrading Nexplane: runbooks/upgrade.md
   - API Reference: api/index.md
 
 markdown_extensions:

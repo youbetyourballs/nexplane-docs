@@ -10,7 +10,7 @@ docker compose -f docker-compose.prod.yml up -d
 
 The production stack adds:
 
-- **`nginx` reverse proxy** (`deploy/nginx.conf`) — terminates TLS (1.2+, strong ciphers; certs at `/etc/nginx/certs/{fullchain,privkey}.pem`), 301-redirects HTTP → HTTPS, proxies `/api/*` (stripping the `/api` prefix) and `/setup/*` to the backend, and serves the SPA from the frontend
+- **`nginx` reverse proxy** (`deploy/nginx.conf`) — terminates TLS (1.2+, strong ciphers; certs at `/etc/nginx/certs/{fullchain,privkey}.pem`), 301-redirects HTTP → HTTPS, proxies `/api/*` (stripping the `/api` prefix) to the backend, and serves the SPA from the frontend
 - **Built frontend** (`frontend/Dockerfile.prod`) — a Vite production build served by nginx, with `VITE_API_URL` / `VITE_AGENT_DOWNLOAD_URL` baked in at build time
 - **Backend** — runs Alembic `upgrade head` on startup, then uvicorn with 2 workers (same image as dev; bundles Tailscale, Terraform, Ansible, the SSM plugin, and Helm)
 - **Postgres 16** behind a healthcheck gate
@@ -48,12 +48,6 @@ A Helm chart lives in `helm/nexplane/` with three values profiles:
 ```bash
 helm install nexplane ./helm/nexplane -f helm/nexplane/values-enterprise.yaml
 ```
-
-## Commercial Edition
-
-To run a `commercial` instance, set `NEXPLANE_EDITION=commercial` and mount the commercial CR catalog/executors at `NEXPLANE_COMMERCIAL_CATALOG_PATH`. A fresh commercial instance is bootstrapped through the first-run setup-token flow before it serves any other traffic.
-
-See [Editions & First-Run Setup](../security/editions.md) for the full bootstrap procedure.
 
 ## See also
 

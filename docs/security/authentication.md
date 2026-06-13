@@ -65,4 +65,4 @@ On a successful OIDC callback, Nexplane matches the returned email against exist
 ## See also
 
 - [Security Model](model.md) — roles and authorization
-- [Editions & First-Run Setup](editions.md) — bootstrapping a commercial instance
+- [Safety Engine](safety-engine.md) — how authentication decisions are enforced

@@ -37,6 +37,10 @@ Authorization: Bearer <token>
 | Group | Description |
 |-------|-------------|
 | `/auth/*` | Login, logout, current user |
+| `/auth/oidc/*` | OIDC SSO redirect and callback (authorization-code flow) |
+| `/identity-providers/*` | OIDC provider CRUD; `/active` is public for the login screen |
+| `/orgs/{org_id}/auth-mode` | Switch an org between `local` and `idp` auth |
+| `/security-policy/*` | Soak sessions, policy diffs, accept, per-project baselines |
 | `/assets/*` | Asset inventory CRUD, tag management, bulk tagging, ingest |
 | `/connectors/*` | Connector CRUD, test connection, credentials, schedule, ingest |
 | `/projects/*` | Project CRUD, member management, AI planning chat |
@@ -55,6 +59,26 @@ Authorization: Bearer <token>
 | `/audit-events/*` | Immutable audit trail (read-only) |
 
 ## Key Endpoints
+
+### Authentication & SSO
+
+```
+POST   /auth/login                          Local login → JWT
+GET    /identity-providers/active           Public — active OIDC providers for the login screen
+GET    /auth/oidc/{idp_id}/redirect         Begin OIDC authorization-code flow
+GET    /auth/oidc/{idp_id}/callback         OIDC callback (state-verified) → JWT
+POST   /orgs/{org_id}/auth-mode             Switch org auth mode (local | idp)
+```
+
+### Security Policy
+
+```
+POST   /security-policy/soak-sessions                Start a soak session
+GET    /security-policy/soak-sessions/{id}/diff      Review synthesized policy vs baseline
+POST   /security-policy/soak-sessions/{id}/accept    Accept diff → hardening CR + new baseline
+GET    /security-policy/baselines/{project_id}       Current accepted baseline
+DELETE /security-policy/baselines/{project_id}       Reset baseline
+```
 
 ### Change Request Lifecycle
 

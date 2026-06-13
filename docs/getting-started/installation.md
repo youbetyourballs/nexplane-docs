@@ -64,8 +64,12 @@ Interactive API docs are at [http://localhost:8000/docs](http://localhost:8000/d
 | `CORS_ORIGINS` | `http://localhost:3000,http://localhost:5173` | Allowed frontend origins |
 | `ENVIRONMENT` | `development` | Environment name |
 | `AI_MODEL` | `claude-sonnet-4-6` | Anthropic model for AI planning |
-| `WEBHOOK_SECRET` | dev key | HMAC key for vulnerability scanner webhook verification |
+| `WEBHOOK_SECRET` | dev key | HMAC key for vulnerability scanner webhook verification (≥16 chars outside development) |
 | `NEXPLANE_AGENT_DOWNLOAD_URL` | S3 base URL | Override for self-hosted agent binary distribution |
+| `INSTANCE_URL` | `http://localhost:8000` | Public instance URL used for OIDC redirect URIs, setup links, and email |
+| `NEXPLANE_EDITION` | `core` | Edition gate — `core` or `commercial` (enables the setup flow + commercial CR catalog) |
+| `NEXPLANE_COMMERCIAL_CATALOG_PATH` | (unset) | Path to the mounted commercial CR catalog/executors (commercial edition only) |
+| `NEXPLANE_OPS_SECRET` | (unset) | Shared secret for the `X-Ops-Secret` setup-token endpoint; falls back to SSM `/nexplane/ops/instance-shared-secret` |
 
 !!! warning "Production deployments"
     Always set `SECRET_KEY` to a random 32-byte hex string in production. The auto-generated key changes on container restart, which invalidates all active sessions.
@@ -73,6 +77,10 @@ Interactive API docs are at [http://localhost:8000/docs](http://localhost:8000/d
     ```bash
     python3 -c "import secrets; print(secrets.token_hex(32))"
     ```
+
+## Going to Production
+
+The steps above run the development stack. For a hardened single-node install (HTTPS reverse proxy, built frontend) or a Kubernetes deployment via Helm, see [Production Deployment](production-deployment.md).
 
 ## Next Step
 

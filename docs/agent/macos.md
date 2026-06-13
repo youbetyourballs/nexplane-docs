@@ -4,16 +4,11 @@ This page covers macOS-specific installation details, service management, and tr
 
 ## Installation
 
-The agent installs as a launchd daemon that runs at system boot.
+The agent installs as a launchd daemon that runs at system boot. Only the **Apple Silicon (`darwin/arm64`)** binary is published — it is built on macOS hardware and pushed to the same S3 bucket as the Linux and Windows binaries.
 
 ```bash
-# Apple Silicon
-curl -fsSL https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-darwin-arm64 \
-  -o /usr/local/bin/nexplane-agent
-chmod +x /usr/local/bin/nexplane-agent
-
-# Intel
-curl -fsSL https://github.com/youbetyourballs/nexplane/releases/latest/download/nexplane-agent-darwin-amd64 \
+# Apple Silicon (arm64)
+curl -fsSL https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/nexplane-agent-darwin-arm64-$(curl -fsSL https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/version) \
   -o /usr/local/bin/nexplane-agent
 chmod +x /usr/local/bin/nexplane-agent
 
@@ -71,17 +66,50 @@ Some hardening operations require Full Disk Access permission. On macOS 12+, you
 
 Full Disk Access is required for operations that read or write files outside standard locations (e.g., `/etc/ssh/sshd_config`, `/private/etc/`).
 
-## Supported Operations on macOS
+## macOS Change Types
 
-| Operation | Notes |
-|---|---|
-| Disable/Enable Service | Uses `launchctl` to load/unload service plists |
-| Set File Permission | Uses `chmod` and `chown` |
-| Rotate Local User Password | Uses `dscl` to set the password |
-| Lock Local User Account | Uses `dscl` to set `AuthenticationAuthority` to disable login |
+The macOS agent exposes **23 macOS change types** across three areas, all driven by the `macos` command package.
+
+### Posture & encryption
+
+| Change type | Action |
+|-------------|--------|
+| `macos_filevault_enable` | Enable FileVault full-disk encryption (and report status) |
+| `macos_gatekeeper_enable` | Enable Gatekeeper |
+| `macos_profiles_install` | Install configuration profiles |
+| `macos_defaults_write` | Write a managed `defaults` key |
+| `macos_sysinfo` | Collect system information |
+| `macos_softwareupdate_install` | Audit and install pending software updates |
+
+### Binary authorization (Santa)
+
+Nexplane installs and manages **Santa** — Google / North Pole Security's binary authorization system — on macOS hosts:
+
+| Change type | Action |
+|-------------|--------|
+| `macos_santa_install` | Install Santa |
+| `macos_santa_rule_add` | Add an allow/block rule (by hash, signing ID, or certificate) |
+| `macos_santa_mode_set` | Switch between **monitor** and **lockdown** mode |
+
+Santa rules can also be listed and removed, sync can be triggered, decisions exported, and an individual binary checked against the current ruleset.
+
+!!! note "SIP and the Santa system extension"
+    When System Integrity Protection blocks the system extension (for example on an unmanaged EC2 `mac2.metal` host), `macos_santa_install` returns `installed: true, activated: false` rather than failing. The change request still completes and signals that MDM/SIP approval is pending, instead of leaving the CR in an error state.
+
+### Observability & hardening
+
+- **Software inventory** via `brew`, MacPorts, and `pkgutil`
+- **CIS compliance audit** — SIP, Gatekeeper, the application firewall (ALF), NTP, SSH, auditd, Santa, and screen lock
+- **SSH hardening** and **NTP** configuration via `systemsetup`
+- **Syslog forwarding** and **network isolation** via `pfctl`
+- **Fleet operations** via `launchctl` and `brew`
+
+## macOS Smoke Coverage
+
+macOS support is validated against an EC2 `mac2.metal` instance on a Dedicated Host across the `MAC_AGENT_BOOTSTRAP`, `MAC_POSTURE_AUDIT`, `MAC_AUTH_HARDENING`, and `MAC_OBSERVABILITY` phases.
 
 !!! note "macOS agent usage"
-    The macOS agent is primarily used for managing developer laptops and macOS-based build agents. For server fleets, Linux or Windows agents are more commonly used.
+    The macOS agent is used for managing developer laptops, macOS-based build agents, and Apple Silicon fleets. For Linux and Windows server fleets, the corresponding agent builds are used.
 
 ## Uninstalling
 

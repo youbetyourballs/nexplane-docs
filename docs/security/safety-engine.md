@@ -42,3 +42,16 @@ The following scenarios block submission regardless of risk score:
 **Active change freeze:** The approve and execute endpoints return `423 Locked`. Emergency bypass requires the `ir_responder` role plus a mandatory `X-Bypass-Justification` header. All bypass attempts are recorded in the audit trail whether successful or not.
 
 **Step credential output:** Credentials produced during multi-step execution (new passwords, rotated keys) travel in process memory only. They are never written to logs, the database, or temporary files. The only stored artifact is the encrypted rollback snapshot of the pre-change state.
+
+## Edition, Access & Policy Safety
+
+These rules govern instance bootstrap, authentication, and policy rollout:
+
+| Scenario | Behavior |
+|----------|----------|
+| Unconfigured commercial instance | All non-exempt traffic is `307`-redirected to `/setup` until the first admin user exists |
+| Setup token | One-time, instance-URL-bound, 24h TTL; `/setup/token` requires the `X-Ops-Secret` header |
+| OIDC login, unknown email | Rejected unless the provider has `auto_provision` enabled |
+| Security policy rollout | Enforced only after the soak window closes; the synthesized diff must be reviewed and accepted first |
+
+See [Editions & First-Run Setup](editions.md), [Authentication & SSO](authentication.md), and [Security Policy Auto-Generation](../features/security-policy.md) for details.

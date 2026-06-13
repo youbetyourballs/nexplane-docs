@@ -16,14 +16,16 @@ Nexplane gives security teams a governed execution layer:
 
 - **Change Requests** — safety-reviewed, approval-gated, audited, with automatic rollback
 - **Projects** — group related change requests into a sequenced plan with dependency tracking
-- **AI Planning Assistant** — describe your goal, get a structured change plan referencing your actual asset inventory
+- **AI Planning Assistant** — describe your goal, get a structured change plan referencing your actual asset inventory (Anthropic Claude or OpenAI)
 - **Composable Runbooks** — chain change types into reusable multi-step workflows with conditional branching and human checkpoints
 - **Asset Inventory** — servers, cloud accounts, firewalls, identities, applications — discoverable via connectors
-- **Connectors** — 65+ integrations spanning cloud, identity, EDR, IaC, ticketing, and observability
-- **Nexplane Agent** — a cross-platform Go binary that runs on managed machines, reaches out to the control plane, and executes signed commands — no inbound SSH required
+- **Connectors** — 70+ integrations spanning cloud, identity, EDR, IaC, ticketing, and observability
+- **Nexplane Agent** — a cross-platform Go binary (Linux, Windows, macOS) that runs on managed machines, reaches out to the control plane, and executes signed commands — no inbound SSH required
 - **Incident Response Playbooks** — pre-defined fast-path workflows for host isolation, account lockdown, evidence preservation, and phishing response
 - **Vulnerability Remediation Pipeline** — close the loop between scanner findings and automated remediation
 - **Compliance & Governance** — CIS benchmark enforcement, drift detection, change freeze windows, audit evidence collection
+- **Security Policy Auto-Generation** — synthesize least-privilege seccomp/AppArmor/SELinux/eBPF policies from observed behavior during a soak window
+- **Authentication & SSO** — local JWT auth or OIDC single sign-on, switchable per organization
 
 ---
 

@@ -8,6 +8,7 @@ The Nexplane Agent is a cross-platform Go binary that runs on managed machines a
 |----------|--------------|
 | Linux | amd64, arm64 |
 | Windows | amd64 |
+| macOS | arm64 (Apple Silicon) |
 
 ## Distribution
 
@@ -18,9 +19,12 @@ https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/
   nexplane-agent-linux-amd64-{VERSION}
   nexplane-agent-linux-arm64-{VERSION}
   nexplane-agent-windows-amd64-{VERSION}.exe
+  nexplane-agent-darwin-arm64-{VERSION}
   + .sha256 sidecar for each binary
   version  (plain text: current version string)
 ```
+
+The `darwin/arm64` (Apple Silicon) binary is built on macOS hardware and published to the same bucket; the Linux and Windows binaries are produced by the Docker multi-stage build.
 
 ## How It Works
 
@@ -39,7 +43,7 @@ https://nexplane-agent-downloads.s3.us-east-1.amazonaws.com/
 
 ## Command Packages
 
-The agent supports 15 command packages covering patching, hardening, IaC, fleet operations, forensics, compliance, database administration, and more. See [Command Packages](commands.md).
+The agent supports 20+ command packages covering patching, hardening, IaC, fleet operations, forensics, compliance, database administration, macOS posture and binary authorization, eBPF policy, application discovery, and legacy-workload containerization. See [Command Packages](commands.md).
 
 ## Self-Update
 

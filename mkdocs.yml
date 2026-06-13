@@ -30,6 +30,7 @@ nav:
     - Connect a Cloud Account: getting-started/connect-cloud.md
     - Your First Change Request: getting-started/first-change-request.md
     - Deploy the Agent: getting-started/deploy-agent.md
+    - Production Deployment: getting-started/production-deployment.md
   - Core Concepts:
     - Change Requests: concepts/change-requests.md
     - Projects: concepts/projects.md
@@ -45,6 +46,7 @@ nav:
     - Compliance & Governance: features/compliance.md
     - IaC Orchestration: features/iac-orchestration.md
     - Secret & Credential Rotation: features/credential-rotation.md
+    - Security Policy Auto-Generation: features/security-policy.md
     - IP Migration: features/ip-migration.md
   - Change Types:
     - Overview: change-types/index.md
@@ -144,8 +146,11 @@ nav:
     - Command Packages: agent/commands.md
     - Self-Update: agent/self-update.md
     - Windows: agent/windows.md
+    - macOS: agent/macos.md
   - Security:
     - Security Model: security/model.md
+    - Authentication & SSO: security/authentication.md
+    - Editions & First-Run Setup: security/editions.md
     - Credential Storage: security/credentials.md
     - Safety Engine: security/safety-engine.md
     - Network Exposure: security/network-exposure.md

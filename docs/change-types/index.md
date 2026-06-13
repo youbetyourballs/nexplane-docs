@@ -29,6 +29,8 @@ A change type is a structured, typed operation that Nexplane knows how to execut
 | SaaS (Slack) | `deactivate_user`, `reactivate_user` |
 | SaaS (Entra ID) | `remove_from_teams`, `assign_license`, `remove_license`, `revoke_sessions`, `disable_user` |
 | SaaS (Kubernetes) | `restart_deployment`, `scale_deployment`, `apply_network_policy`, `update_rbac`, `rotate_secret`, `helm_upgrade`, `helm_rollback` |
+| macOS | `macos_filevault_enable`, `macos_gatekeeper_enable`, `macos_santa_install`, `macos_santa_rule_add`, `macos_santa_mode_set`, `macos_softwareupdate_install`, `macos_profiles_install`, `macos_defaults_write`, `macos_sysinfo` … (23 macOS change types) |
+| Security Policy | `apply_seccomp_profile`, `apply_apparmor_profile`, `apply_selinux_policy`, `apply_ebpf_policy` (synthesized from soak sessions) |
 | Telemetry | `telemetry_agent_deploy`, `remote_command` |
 
 ## Risk Scoring

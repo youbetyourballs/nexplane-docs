@@ -1,6 +1,6 @@
 # Agent Command Packages
 
-The Nexplane Agent supports 15 command packages. All commands are typed — registered at compile time. No arbitrary shell execution is possible.
+The Nexplane Agent supports 20+ command packages. All commands are typed — registered at compile time. No arbitrary shell execution is possible.
 
 ## Command Package Reference
 
@@ -21,8 +21,12 @@ The Nexplane Agent supports 15 command packages. All commands are typed — regi
 | `ossecurity` | Linux | `configure_selinux`, `configure_seccomp`, `apply_sysctl_hardening`, `configure_host_firewall`, `blacklist_kernel_modules`, `harden_mount_options`, `deploy_auditd_rules`, `setup_file_integrity_monitoring`, `audit_os_security_posture`, `audit_ebpf_posture`, `configure_ebpf_security_policy`, `deploy_ebpf_policy` |
 | `linuxauth` | Linux | `harden_ssh`, `configure_pam`, `manage_ca_certificates`, `configure_ntp`, `audit_users_and_groups`, `audit_privesc_vulnerabilities` |
 | `winharden` | Windows | LAPS, Credential Guard, PowerShell CLM, AppLocker, SMB signing, BitLocker, Windows Firewall, TLS protocols, RDP hardening, audit policy, registry hardening |
-| `crossplatform` | Linux + Windows | `harden_tls_protocols`, `configure_dns_resolver`, `audit_software_inventory`, `configure_syslog` |
+| `crossplatform` | Linux + Windows + macOS | `harden_tls_protocols`, `configure_dns_resolver`, `audit_software_inventory`, `configure_syslog` |
 | `linuxupgrade` | Linux | `estimate_image_size`, in-place OS upgrade, containerize-and-migrate |
+| `macos` | macOS | FileVault, Gatekeeper, Santa binary authorization, `softwareupdate`, configuration profiles, `defaults`, `launchctl`, Homebrew, system info |
+| `ebpf` | Linux | eBPF LSM + network policy posture audit, policy synthesis and deployment |
+| `appdiscovery` / `deepdiscover` | Linux + Windows + macOS | Running-service and listening-port discovery; deep application/dependency mapping |
+| `containerizebuild` / `containerizeretire` | Linux | Containerize a legacy workload (build + push image) and retire the source host |
 
 ## Package Details
 
@@ -167,3 +171,35 @@ Linux OS upgrade operations:
 - `estimate_image_size` — non-destructive estimation of OS image size for migration planning
 - In-place OS upgrade
 - Containerize-and-migrate (package running OS into a container image for migration)
+
+### macos
+
+macOS posture, hardening, and binary authorization (Apple Silicon). See [Agent on macOS](macos.md) for the full reference:
+
+- **Posture & encryption** — FileVault status/enable, Gatekeeper status/enable/disable, configuration profiles, system info
+- **Binary authorization (Santa)** — install Santa, add/remove/list rules, switch monitor ↔ lockdown mode, trigger sync, export decisions, check a binary
+- **Observability & hardening** — software inventory (`brew`/MacPorts/`pkgutil`), CIS compliance audit, SSH hardening, NTP via `systemsetup`, syslog forwarding, network isolation via `pfctl`, software-update audit/install, fleet ops via `launchctl`/`brew`
+
+### ebpf
+
+eBPF-based security policy for Linux:
+
+- eBPF LSM (Linux Security Module) posture audit
+- eBPF network policy posture audit
+- Policy synthesis from observed behavior and deployment
+
+These commands back the [Security Policy Auto-Generation](../features/security-policy.md) `ebpf_lsm` and `ebpf_network` backends.
+
+### appdiscovery / deepdiscover
+
+Application discovery (Linux, Windows, macOS):
+
+- `appdiscovery` — enumerate running services and listening ports
+- `deepdiscover` — deep application and dependency mapping
+
+### containerizebuild / containerizeretire
+
+Legacy-workload containerization (Linux):
+
+- `containerizebuild` — build a container image from a running workload and push it to a registry
+- `containerizeretire` — retire the source host once the containerized workload is verified

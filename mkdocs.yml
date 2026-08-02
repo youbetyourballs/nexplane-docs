@@ -46,6 +46,7 @@ nav:
     - IaC Orchestration: features/iac-orchestration.md
     - Secret & Credential Rotation: features/credential-rotation.md
     - IP Migration: features/ip-migration.md
+    - OS & Application Upgrades: features/os-upgrades.md
   - Change Types:
     - Overview: change-types/index.md
     - Compute: change-types/compute.md

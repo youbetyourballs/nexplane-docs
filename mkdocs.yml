@@ -60,6 +60,7 @@ nav:
     - Telemetry: change-types/telemetry.md
     - OS & Application Upgrades: change-types/os-upgrades.md
     - Vulnerability Remediation: change-types/vulnerability.md
+    - Container Operations: change-types/container-operations.md
   - Connectors:
     - Overview: connectors/index.md
     - Cloud & Infrastructure:

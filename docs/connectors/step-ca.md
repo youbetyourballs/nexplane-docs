@@ -19,3 +19,5 @@ The step-ca connector manages TLS certificate issuance and rotation via a Smalls
 |--------|-------------|---------|
 | `rotate_certificate` | Reissue a TLS certificate for a domain; optionally deploy via SSM and trigger a service reload | N/A |
 | `check_expiry` | Check remaining TLS certificate validity days for a host:port endpoint (read-only; warns when under threshold) | N/A |
+
+**Certificate rotation:** step-ca is the CA backend for `step_ca_rotate_cert` change requests. Nexplane calls the step-ca API to issue a new certificate, then optionally deploys it to the target host via AWS SSM Run Command and triggers a service reload. See [Certificate Rotation](../change-types/credentials.md#certificate-rotation).

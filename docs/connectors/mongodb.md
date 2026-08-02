@@ -15,3 +15,5 @@ The MongoDB connector manages MongoDB user credentials.
 | Action | Description | Rollback |
 |--------|-------------|---------|
 | `rotate_mongodb_password` | Rotate a MongoDB user's password via the `updateUser` command | Restore previous password |
+
+**Major version upgrades:** `db_major_version_upgrade` supports MongoDB major version upgrades with `mongodump`-based rollback. See [OS & Application Upgrades](../change-types/os-upgrades.md#database-major-version-upgrade).

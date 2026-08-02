@@ -58,6 +58,8 @@ nav:
     - Compliance: change-types/compliance.md
     - Incident Response: change-types/incident-response.md
     - Telemetry: change-types/telemetry.md
+    - OS & Application Upgrades: change-types/os-upgrades.md
+    - Vulnerability Remediation: change-types/vulnerability.md
   - Connectors:
     - Overview: connectors/index.md
     - Cloud & Infrastructure:

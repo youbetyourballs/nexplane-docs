@@ -144,6 +144,13 @@ nav:
     - Command Packages: agent/commands.md
     - Self-Update: agent/self-update.md
     - Windows: agent/windows.md
+  - MCP Server:
+    - Overview: mcp/index.md
+    - Assets & Connectors: mcp/assets-connectors.md
+    - Change Requests: mcp/change-requests.md
+    - Findings & Identity: mcp/findings-identity.md
+    - Host Intelligence: mcp/host-intelligence.md
+    - Projects, Planning & Migration: mcp/projects-planning.md
   - Security:
     - Security Model: security/model.md
     - Credential Storage: security/credentials.md

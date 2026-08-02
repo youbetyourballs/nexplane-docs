@@ -47,6 +47,7 @@ nav:
     - Secret & Credential Rotation: features/credential-rotation.md
     - IP Migration: features/ip-migration.md
     - OS & Application Upgrades: features/os-upgrades.md
+    - Rolling Deploys: features/rolling-deploy.md
   - Change Types:
     - Overview: change-types/index.md
     - Compute: change-types/compute.md

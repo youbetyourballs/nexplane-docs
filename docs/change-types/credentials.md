@@ -65,3 +65,35 @@ Updates a service account password in AD and/or Okta, then pushes the new passwo
 | `route53_record_delete` | Delete a DNS record | Recreate the deleted record |
 
 **Connector:** AWS
+
+---
+
+## End-to-End Rotation with Consumer Fan-Out
+
+**Change type:** `credential_rotation_fanout`
+
+Rotates a credential at its source and automatically updates all infrastructure components that reference it — closing the gap between "the key was rotated" and "everything using the key has the new value."
+
+1. Rotate (optional) — call the specified rotate action at the source (IAM access key, Vault secret, database password). If the rotate action returns a `new_value`, that value is used for all subsequent consumer updates. This phase is skipped if no `rotate` spec is provided.
+2. Scan — search for consumers across the configured scopes. Supported surfaces: AWS Lambda environment variables, ECS task definition environment variables, SSM parameters, Kubernetes ConfigMaps, and Kubernetes Deployment environment variables.
+3. Update — push the new credential value to each consumer in order, building a FILO rollback stack as updates are applied. If any consumer update returns an error, the CR transitions to `paused` immediately — remaining consumers are not updated. The partial state is preserved for operator review.
+4. Verify — re-scan all configured scopes to confirm the old credential value is no longer present. If any consumer still holds the old value, the CR transitions to `paused`.
+
+**Rollback:** Unwind consumers in reverse (FILO) order using the `rollback_data` captured during each update. Consumers that were not successfully updated are skipped. After all consumers are unwound, the source credential is restored via the rotate action's rollback path. If rollback fails for any consumer, the execution result records the failure so operators can restore the remaining consumers manually.
+
+**Connector:** AWS (source credential and AWS-surface consumers) + Kubernetes (k8s-surface consumers)
+
+---
+
+## Certificate Rotation
+
+**Change type:** `step_ca_rotate_cert`
+
+Reissues a TLS certificate from a step-ca certificate authority and optionally deploys the new certificate to a target host.
+
+1. Issue — connect to the step-ca CA and issue a new certificate for the specified subject and SAN with the configured validity period (default: 720 hours / 30 days). The certificate and private key are written to a secure temporary directory.
+2. Deploy (optional) — if `deploy_via_ssm` is enabled and an `instance_id` is provided, write the new certificate and key to the target EC2 instance via SSM Run Command. The key is written with mode `0600`; the certificate with mode `0644`. After writing, the configured `reload_command` is executed (default: `nginx -s reload`).
+
+**Rollback:** Not available. Once a certificate is issued by the CA, the old certificate is expired or superseded. If the newly issued certificate must be invalidated, revoke it via `step-ca revoke` out of band. The executor's rollback function records this explicitly and returns `rolled_back: false`.
+
+**Connector:** step-ca (certificate issuance) + AWS SSM (optional host deployment)

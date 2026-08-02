@@ -52,6 +52,24 @@ Also attach or create a policy granting `sts:GetCallerIdentity`.
 | `key_pair_create` | Create an EC2 key pair | Delete the key pair |
 | `key_pair_delete` | Delete an EC2 key pair | Not available |
 
+### ECS
+
+| Change Type | Description |
+|-------------|-------------|
+| `ecs_rolling_deploy` | Register a new task definition revision and drive a rolling service update with ECS stability, ALB health, and HTTP probe gates. Auto-rolls back to the previous revision if any gate fails. |
+| `ecs_task_def_deregister` | Deregister a task definition revision. Irreversible — ECS has no re-register API. |
+| `update_ecs_task_def_env` | Register a new task definition revision with updated environment variables. Does not update the running service — use `ecs_rolling_deploy` for live deploys. |
+
+**Required IAM permissions:**
+- `ecs:DescribeServices`
+- `ecs:DescribeTaskDefinition`
+- `ecs:RegisterTaskDefinition`
+- `ecs:UpdateService`
+- `ecs:DeregisterTaskDefinition`
+- `elasticloadbalancing:DescribeTargetHealth` *(required only if using the ALB health gate)*
+
+See [Container Operations](../change-types/container-operations.md) for full parameter reference.
+
 ### IAM
 
 | Action | Description | Rollback |

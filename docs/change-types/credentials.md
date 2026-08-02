@@ -79,7 +79,7 @@ Rotates a credential at its source and automatically updates all infrastructure 
 3. Update — push the new credential value to each consumer in order, building a FILO rollback stack as updates are applied. If any consumer update returns an error, the CR transitions to `paused` immediately — remaining consumers are not updated. The partial state is preserved for operator review.
 4. Verify — re-scan all configured scopes to confirm the old credential value is no longer present. If any consumer still holds the old value, the CR transitions to `paused`.
 
-**Rollback:** Unwind consumers in reverse (FILO) order using the `rollback_data` captured during each update. Consumers that were not successfully updated are skipped. After all consumers are unwound, the source credential is restored via the rotate action's rollback path. If rollback fails for any consumer, the execution result records the failure so operators can restore the remaining consumers manually.
+**Rollback:** Unwind consumers in reverse (FILO) order using the `rollback_data` captured during each update. Consumers that were not successfully updated are skipped. Source credential restoration is not performed automatically — if needed, restore the original credential at the source manually. If rollback fails for any consumer, the execution result records the failure so operators can restore the remaining consumers manually.
 
 **Connector:** AWS (source credential and AWS-surface consumers) + Kubernetes (k8s-surface consumers)
 

@@ -71,6 +71,9 @@ Migrates a Windows Server instance to a new instance at a higher OS version. Inv
 
 Upgrades a Kubernetes cluster by exactly one minor version. Supports EKS, GKE, AKS, and kubeadm clusters (auto-detected by default). The executor enforces the +1 minor version constraint and scans for removed API violations before the irreversible control-plane step. Node pools are upgraded in rolling or blue-green fashion and can be independently rolled back to their previous image.
 
+!!! warning "Partial rollback only"
+    The control plane upgrade is irreversible — Kubernetes does not support downgrading the control plane version once etcd data has been migrated. If the upgrade fails during or after the control plane step, manual intervention is required. Node pool rollback (restoring previous node image versions) remains available after a successful control plane upgrade.
+
 **Phases:**
 
 1. **Preflight** — validates the target version is exactly one minor ahead of current, scans all workloads for removed API violations, checks node resource headroom, and detects the cluster type. Blocked if removed API violations are found or version path is invalid.

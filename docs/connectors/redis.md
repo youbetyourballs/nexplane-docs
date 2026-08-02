@@ -16,5 +16,3 @@ The Redis connector manages Redis AUTH passwords.
 | Action | Description | Rollback |
 |--------|-------------|---------|
 | `rotate_redis_password` | Rotate the Redis `requirepass` via `CONFIG SET`. Stores the old password in the execution result for rollback. | Restore previous password |
-
-**Major version upgrades:** `db_major_version_upgrade` supports Redis major version upgrades. See [OS & Application Upgrades](../change-types/os-upgrades.md#database-major-version-upgrade).

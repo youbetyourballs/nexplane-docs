@@ -56,7 +56,7 @@ Rotating a secret at its source — an IAM key, Vault secret, or database passwo
 
 After rotating the credential at the source (optionally, via a configured rotate action), the executor scans across AWS and Kubernetes surfaces to find every component holding the old value: Lambda environment variables, ECS task definitions, SSM parameters, Kubernetes ConfigMaps, and Kubernetes Deployments. It then updates each consumer with the new credential in order, building a FILO rollback stack as it goes.
 
-If a consumer update fails, the CR automatically pauses — the operator can review the error, fix the failing consumer (manually or by retrying), and resume. If verification detects that any consumer still holds the old credential after all updates complete, the CR pauses again until those stragglers are resolved. The rollback stack unwinds consumers in reverse order before restoring the original credential at the source if needed.
+If a consumer update fails, the CR automatically pauses — the operator can review the error, fix the failing consumer (manually or by retrying), and resume. If verification detects that any consumer still holds the old credential after all updates complete, the CR pauses again until those stragglers are resolved. The rollback stack unwinds consumers in reverse order. Source credential restoration is not performed automatically — restore the original credential at the source manually if needed.
 
 See [credential_rotation_fanout](../change-types/credentials.md#end-to-end-rotation-with-consumer-fan-out) for the full phase reference.
 

@@ -1,6 +1,50 @@
 # Container Operations
 
-ECS change types manage task definition revisions and service deployments on Amazon ECS.
+Container operations cover ECS service deployments and cross-cloud container image transfers.
+
+## Container Image Transfer
+
+**Change type:** `container_image_transfer`
+
+Pulls a container image from one cloud registry and pushes it to another, with full rollback. Supports any combination of AWS ECR, Azure ACR, GCP Artifact Registry, and OCI OCIR as source or destination.
+
+**Transfer paths:**
+
+- **Agent docker** (default) — Nexplane agent on a Linux host performs `docker pull`, `docker tag`, and `docker push`. Used for all source/destination combinations except Azure-destination.
+- **ACR import API** — Azure's server-side import API pulls the image directly into ACR without routing through the Nexplane agent. Used automatically when the destination is Azure ACR.
+
+**Phases:**
+
+1. Preflight — verify source image and tag exist; check destination for pre-existing tag; fail fast if `overwrite_existing` is false and the tag is already present
+2. Snapshot — record whether the destination tag exists and, if so, its current digest (for rollback restoration)
+3. Transfer — execute the appropriate transfer path; verify the transferred digest matches the source
+4. Verify — confirm the destination tag now exists and the digest is correct
+5. Report — summarise the transfer: method used, digest matched, bytes transferred
+
+**Rollback:**
+
+| Scenario | Rollback action |
+|----------|----------------|
+| Net-new tag (destination tag did not exist before transfer) | Delete the destination tag |
+| Overwrote existing tag | Restore the previous digest by re-tagging from the original digest reference |
+| GC edge case (original digest no longer in registry) | Partial rollback — tag deleted but original cannot be restored |
+
+**Parameters:**
+
+| Parameter | Required | Description |
+|-----------|----------|-------------|
+| `source_connector_id` | Yes | Connector UUID for the source registry |
+| `dest_connector_id` | Yes | Connector UUID for the destination registry |
+| `source_image` | Yes | Source image path (e.g., `nexplane-smoke/alpine`) |
+| `source_tag` | Yes | Source tag (e.g., `3.19`) |
+| `dest_image` | Yes | Destination image path |
+| `dest_tag` | Yes | Destination tag |
+| `overwrite_existing` | No | Allow overwriting an existing destination tag (default: `false`) |
+| `agent_asset_id` | No | Asset ID of a Linux host to use for agent-docker transfers; auto-selected if omitted |
+
+**Connector type:** `container_registry` (use `list_catalog_actions("container_registry")` to discover)
+
+---
 
 ## ECS Rolling Deploy
 

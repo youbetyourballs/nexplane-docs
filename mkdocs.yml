@@ -48,6 +48,9 @@ nav:
     - IP Migration: features/ip-migration.md
     - OS & Application Upgrades: features/os-upgrades.md
     - Rolling Deploys: features/rolling-deploy.md
+    - Proactive Hardening: features/proactive-hardening.md
+    - Recurring Jobs: features/recurring-jobs.md
+    - FILO Rollback Stack: features/filo-rollback.md
   - Change Types:
     - Overview: change-types/index.md
     - Compute: change-types/compute.md
@@ -64,6 +67,9 @@ nav:
     - Vulnerability Remediation: change-types/vulnerability.md
     - Container Operations: change-types/container-operations.md
     - Active Directory: change-types/active-directory.md
+    - Middleware Upgrades: change-types/middleware-upgrades.md
+    - Runtime Upgrades: change-types/runtime-upgrades.md
+    - Proactive Hardening: change-types/proactive-hardening.md
   - Connectors:
     - Overview: connectors/index.md
     - Cloud & Infrastructure:
@@ -144,6 +150,7 @@ nav:
     - Host Execution:
       - SSH: connectors/ssh.md
       - Nexplane Agent Connector: connectors/nexplane-agent.md
+      - Santa (macOS): connectors/santa.md
   - Agent:
     - Overview: agent/index.md
     - Installation & Configuration: agent/installation.md
